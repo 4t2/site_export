@@ -525,7 +525,7 @@ class SiteExport extends Backend
 			$str
 		);
 
-		$str = preg_replace_callback('~(<a.*href=")(.*)(".*>)~isU', 'SiteExport::replaceLinks', $str);
+		$str = preg_replace_callback('~(<a.*href=")(.*)(".*>)~isU', 'self::replaceLinks', $str);
 		
 		if (!is_dir($this->dataDir . '/images'))
 		{
@@ -539,8 +539,8 @@ class SiteExport extends Backend
 
 		if (is_writeable($this->dataDir . '/images') && is_dir($this->dataDir . '/images'))
 		{
-			$str = preg_replace_callback('~(<img.*src=")(.*(png|jpg))(")~isU', 'SiteExport::processImages', $str);
-			$str = preg_replace_callback('~(<link.*href=")(.*)(".*>)~isU', 'SiteExport::processStylesheets', $str);
+			$str = preg_replace_callback('~(<img.*src=")(.*(png|jpg))(")~isU', 'self::processImages', $str);
+			$str = preg_replace_callback('~(<link.*href=")(.*)(".*>)~isU', 'self::processStylesheets', $str);
 		}
 		
 		if ($this->epubExport)
@@ -552,7 +552,7 @@ class SiteExport extends Backend
 	}
 
 
-		private static function replaceLinks($match)
+		protected function replaceLinks($match)
 		{
 			$link = preg_replace('~http://.*/~isU', '', $match[2]);
 			$link = str_replace('/', '_', $link);
