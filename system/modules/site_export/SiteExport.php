@@ -25,12 +25,14 @@ class SiteExport extends Backend
 	public function export(DataContainer $dc)
 	{
 		global $objPage;
+		
+		define('EX_TL_MODE_FE', true);
 
 		// Get the site export data
-		$objSiteExport = $this->Database->prepare("SELECT * FROM tl_site_export WHERE id=?")
+		$objSiteExport = $this->Database->prepare("SELECT * FROM `tl_site_export` WHERE `id`=?")
 			->limit(1)
 			->execute($dc->id);
-		
+
 		$this->targetDir = TL_ROOT . '/' . $objSiteExport->targetDir;
 
 		if (!is_writeable($this->targetDir) || !is_dir($this->targetDir))
@@ -112,31 +114,34 @@ class SiteExport extends Backend
 		{
 			foreach ($this->pageList as $pageId)
 			{
-				$objPage = $this->Database->prepare("
-					SELECT *
-					FROM
-						tl_page
-					WHERE
-						`id`=?
-					ORDER BY `sorting`
-				")
-				->limit(1)
-				->execute($pageId);
+				#$objPage = $this->Database->prepare("SELECT * FROM `tl_page` WHERE `id`=?")->limit(1)->execute($pageId);
+				
+				$objPage = $this->getPageDetails($pageId);
 
-				if ($objPage->numRows > 0)
+				#if ($objPage->numRows > 0)
+				if ($objPage != null)
 				{
 					if ($objSiteExport->includeLayout)
 					{
 						$objPage->includeLayout = $objSiteExport->includeLayout;
 						$objPage->layout = $objSiteExport->layout;
 					}
+					
+					if (version_compare(VERSION, '2.10', '>'))
+					{
+						$url = $this->generateFrontendUrl($objPage->row(), null, $objPage->language);
+					}
+					else
+					{
+						$url = $this->generateFrontendUrl($objPage->row());
+					}
 
 					$this->arrPages[] = array(
 						'title' => $objPage->title,
 						'id' => $objPage->id,
 						'obj' => $objPage,
-						'url' => $this->generateFrontendUrl($objPage->row()),
-						'filename' => $this->getFilename($objPage->alias),
+						'url' => $url,
+						'filename' => $this->getFilename($url),
 						'level' => $this->getPageLevel($objPage->pid),
 						'sort' => (array_search($pageId, $this->pageList) !== FALSE ? array_search($pageId, $this->pageList) + 9000000 : $objPage->sorting)
 					);
@@ -146,6 +151,7 @@ class SiteExport extends Backend
 		}
 
 		$this->normalizePageLevels();
+		
 
 		/**
 		 * Epub exportieren
@@ -180,10 +186,11 @@ class SiteExport extends Backend
 
 				if ($objSiteExport->toc != 'none')
 				{
-					$toc = '<!doctype html><html lang="de"><head><title>Inhaltsverzeichnis '.$objSiteExport->title.'</title><meta charset="utf-8"></head><body><h1>Inhaltsverzeichnis '.$objSiteExport->title.'</h1><ul>';
+					$toc = '<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Inhaltsverzeichnis '.$objSiteExport->title.'</title><meta charset="utf-8"></head><body><h1>Inhaltsverzeichnis '.$objSiteExport->title.'</h1><ul>';
 					$toc = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1 //EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 	<title>Inhaltsverzeichnis '.$objSiteExport->title.'</title>
 </head>
 <body>
@@ -265,7 +272,7 @@ class SiteExport extends Backend
 				$toc .= str_pad('</li></ul>', 10*$lastLevel, '</li></ul>');
 				$toc .= '</li>'."\n".'</ul></body></html>';
 			}
-			
+
 			if ($this->Input->get('step') == 'go')
 			{
 				file_put_contents($this->dataDir . '/toc.html', $toc);
@@ -280,6 +287,13 @@ class SiteExport extends Backend
 		}
 		
 		$html .= '</li></ul></div>';
+
+
+		$pageList = $this->getPageList($this->arrPages, 0);
+		
+		$strJSON = '{"toc":['.$this->getJSON($pageList)."\n]}";
+
+		file_put_contents($this->dataDir . '/toc.json', $strJSON);
 
 		return $html;
 	}
@@ -443,6 +457,67 @@ class SiteExport extends Backend
 	}
 
 
+	protected function getJSON($pageList)
+	{
+		$strData = "";
+		$strStart = '';
+
+		for ($i=0; $i<count($pageList); $i++)
+		{
+			$strData .= $strStart."\n".
+				str_pad("\t", $pageList[$i]['level'], "\t").'{"title":"'.$pageList[$i]['title'].'","file":"'.$pageList[$i]['filename'].'"';
+			
+			if ($pageList[$i]['childs'] !== FALSE)
+			{
+#die(var_export($pageList[$i]['childs'], true));
+				$strData .= ', "childs":'."\n".str_pad("\t", $pageList[$i]['level'], "\t")."[".$this->getJSON($pageList[$i]['childs'])."\n".str_pad("\t", $pageList[$i]['level'])."]";
+			}
+
+			$strData .= "}";
+			$strStart = ',';
+		}
+
+		$strData .= "";
+		
+		return $strData;
+	}
+
+
+	protected function getPageList($flatList, $level = 0)
+	{
+		$pageList = array();
+
+		for ($i=0; $i<count($flatList); $i++)
+		{
+			if ($flatList[$i]['level'] == $level)
+			{
+				$flatList[$i]['childs'] = false;
+#				$arrTest = array('title'=>$flatList[$i]['title'], 'childs'=>false);
+				$pageList[] = $flatList[$i];
+			}
+			elseif ($flatList[$i]['level'] > $level)
+			{
+				$arrPages = array();
+
+				while ($i<count($flatList) && $flatList[$i]['level'] > $level)
+				{
+					$arrPages[] = $flatList[$i];
+					$i++;
+				}
+				
+				$pageList[count($pageList)-1]['childs'] = $this->getPageList($arrPages, $level+1);
+				
+				$i--;
+			}
+			else
+			{
+				return $pageList;
+			}
+		}
+		
+		return $pageList;
+	}
+
 	/**
 	 * shrink page levels to avoid gaps
 	 */
@@ -562,10 +637,10 @@ class SiteExport extends Backend
 				$link .= '.html';
 			}
 			
-			return $match[1].$link.$match[3];
+			return $match[1].'./'.$link.$match[3];
 		}
 
-	
+
 		protected function processImages($match)
 		{
 			$src_image = TL_ROOT . '/' . $match[2];
@@ -579,24 +654,33 @@ class SiteExport extends Backend
 				copy($src_image, $dest_image);
 			}
 			
-			return $match[1].$filename.$match[4];
+			return $match[1].'./'.$filename.$match[4];
 		}
 
 
 		protected function processStylesheets($match)
 		{
-			$src_stylesheet = TL_ROOT . '/' . $match[2];
-			$filename = str_replace(array('/', ' '), '_', $match[2]);
-			$dest_stylesheet = $this->dataDir . '/' . $filename;
-
-			#substr(strrchr($match[2], '/'), 1);
-			
-			if (file_exists($src_stylesheet) && !file_exists($dest_stylesheet))
+			if (stristr($match[1], 'rel="static-stylesheet"') !== FALSE)
 			{
-#$this->log($dest_stylesheet, 'SiteExport', TL_FILES);
-				copy($src_stylesheet, $dest_stylesheet);
+				return str_ireplace('rel="static-stylesheet"', 'rel="stylesheet"', $match[1]).$match[2].$match[3];
 			}
-			return $match[1].$filename.$match[3];
+			elseif (stristr($match[1], 'rel="stylesheet"') !== FALSE || stristr($match[3], 'rel="stylesheet"') !== FALSE)
+			{
+				$src_stylesheet = TL_ROOT . '/' . $match[2];
+				$filename = str_replace(array('/', ' '), '_', $match[2]);
+				$dest_stylesheet = $this->dataDir . '/' . $filename;
+	
+				if (file_exists($src_stylesheet) && !file_exists($dest_stylesheet))
+				{
+					copy($src_stylesheet, $dest_stylesheet);
+				}
+	
+				return $match[1].'./'.$filename.$match[3];
+			}
+			else
+			{
+				return $match[1].$match[2].$match[3];
+			}
 		}
 
 	
