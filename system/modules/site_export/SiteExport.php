@@ -214,7 +214,7 @@ class SiteExport extends Backend
 				{
 					$html .= str_pad('<ul>', 4*($page['level']-$lastLevel), '<ul>');
 
-					if ($objSiteExport->toc == 'indent')
+					if (in_array($objSiteExport->toc, array('indent', 'json')))
 					{
 						$toc .= "\n".str_pad("\t", $page['level']+1, "\t").str_pad('<ul>', 4*($page['level']-$lastLevel), '<ul>');
 					}
@@ -223,7 +223,7 @@ class SiteExport extends Backend
 				{
 					$html .= str_pad('</li></ul>', 10*($lastLevel-$page['level']), '</li></ul>').'</li>';
 					
-					if ($objSiteExport->toc == 'indent')
+					if (in_array($objSiteExport->toc, array('indent', 'json')))
 					{
 						$toc .= "\n".str_pad('</li></ul>', 10*($lastLevel-$page['level']), '</li></ul>').'</li>';
 					}
@@ -296,9 +296,11 @@ class SiteExport extends Backend
 
 		$pageList = $this->getPageList($this->arrPages, 0);
 		
-		$strJSON = '{"toc":['.$this->getJSON($pageList)."\n]}";
-
-		file_put_contents($this->dataDir . '/toc.json', $strJSON);
+		if ($objSiteExport->toc == 'json')
+		{
+			$strJSON = '{"toc":['.$this->getJSON($pageList)."\n]}";
+			file_put_contents($this->dataDir . '/toc.json', $strJSON);
+		}
 
 		return $html;
 	}

@@ -144,9 +144,9 @@ $GLOBALS['TL_DCA']['tl_site_export'] = array
 			'label'                   => &$GLOBALS['TL_LANG']['tl_site_export']['toc']['title'],
 			'search'                  => true,
 			'inputType'               => 'select',
-			'options'                 => array('none', 'flat', 'indent'),
+			'options'                 => array('none', 'flat', 'indent', 'json'),
 			'reference'				  => &$GLOBALS['TL_LANG']['tl_site_export']['toc']['reference'],
-			'eval'                    => array('maxlength'=>32, 'tl_class'=>'w50')
+			'eval'                    => array('maxlength'=>32, 'tl_class'=>'w50', 'tl_class'=>'clr')
 		),
 		'targetDir' => array
 		(
