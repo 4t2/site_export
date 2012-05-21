@@ -17,6 +17,7 @@ class SiteExport extends Backend
 	protected $arrParentId = array();
 	protected $exportRules = array();
 	protected $epubExport = false;
+	protected $arrFilename = array();
 
 	/**
 	 * Export a theme
@@ -135,13 +136,17 @@ class SiteExport extends Backend
 					{
 						$url = $this->generateFrontendUrl($objPage->row());
 					}
+					
+					$strFilename = $this->getFilename($objPage);
+					
+					$this->arrFilename[$url] = $strFilename;
 
 					$this->arrPages[] = array(
 						'title' => $objPage->title,
 						'id' => $objPage->id,
 						'obj' => $objPage,
 						'url' => $url,
-						'filename' => $this->getFilename($url),
+						'filename' => $strFilename,
 						'level' => $this->getPageLevel($objPage->pid),
 						'sort' => (array_search($pageId, $this->pageList) !== FALSE ? array_search($pageId, $this->pageList) + 9000000 : $objPage->sorting)
 					);
@@ -392,7 +397,7 @@ class SiteExport extends Backend
 		{
 			$epubCoverFile = substr(strrchr($objSiteExport->ebookCover, DIRECTORY_SEPARATOR), 1);
 			copy(TL_ROOT.'/'.$objSiteExport->ebookCover, $this->dataDir.'/images/'.$epubCoverFile);
-			
+
 			$content .= '		<meta name="cover" content="'.$epubCoverFile.'"/>';
 		}
 		else
@@ -629,12 +634,20 @@ class SiteExport extends Backend
 
 		protected function replaceLinks($match)
 		{
-			$link = preg_replace('~http://.*/~isU', '', $match[2]);
-			$link = str_replace('/', '_', $link);
+			$link = preg_replace('~https?://.*/~isU', '', $match[2]);
 
-			if (substr($link, -5) != '.html')
+			if (isset($this->arrFilename[$link]))
 			{
-				$link .= '.html';
+				$link = $this->arrFilename[$link];
+			}
+			else
+			{
+				$link = str_replace('/', '_', $link);
+
+				if (substr($link, -5) != '.html')
+				{
+					$link .= '.html';
+				}
 			}
 			
 			return $match[1].'./'.$link.$match[3];
@@ -685,9 +698,12 @@ class SiteExport extends Backend
 
 	
 
-	protected function getFilename($url)
+	protected function getFilename($objPage)
 	{
-		return str_replace('/', '_', $url) . '.html';
+		$arrParts = explode('/', $objPage->alias);
+
+		return $arrParts[count($arrParts)-1].'_'.$objPage->id.'.html';
+		#return str_replace('/', '_', $url) . '.html';
 	}
 
 
