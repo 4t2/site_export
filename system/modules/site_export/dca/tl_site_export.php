@@ -44,20 +44,12 @@ $GLOBALS['TL_DCA']['tl_site_export'] = array
 				'icon'                => 'edit.gif',
 				'attributes'          => 'class="contextmenu"'
 			),
-			'editheader' => array
-			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_site_export']['editheader'],
-				'href'                => 'act=edit',
-				'icon'                => 'header.gif',
-				'button_callback'     => array('tl_site_export', 'editHeader'),
-				'attributes'          => 'class="edit-header"'
-			),
 			'copy' => array
 			(
 				'label'               => &$GLOBALS['TL_LANG']['tl_site_export']['copy'],
 				'href'                => 'act=copy',
 				'icon'                => 'copy.gif',
-				'button_callback'     => array('tl_site_export', 'copyTopic') /* copyChannel */
+				'button_callback'     => array('tl_site_export', 'copyTopic')
 			),
 			'delete' => array
 			(
@@ -65,7 +57,7 @@ $GLOBALS['TL_DCA']['tl_site_export'] = array
 				'href'                => 'act=delete',
 				'icon'                => 'delete.gif',
 				'attributes'          => 'onclick="if (!confirm(\'' . $GLOBALS['TL_LANG']['MSC']['deleteConfirm'] . '\')) return false; Backend.getScrollOffset();"',
-				'button_callback'     => array('tl_site_export', 'deleteTopic') /* deleteChannel*/
+				'button_callback'     => array('tl_site_export', 'deleteTopic')
 			),
 			'show' => array
 			(
@@ -77,7 +69,7 @@ $GLOBALS['TL_DCA']['tl_site_export'] = array
 			(
 				'label'               => &$GLOBALS['TL_LANG']['tl_site_export']['export'],
 				'href'                => 'key=export&amp;step=preview',
-				'icon'                => 'system/modules/site_export/html/images/html_go.png'
+				'icon'                => 'system/modules/site_export/assets/images/html_go.png'
 			)
 		)
 	),
@@ -114,6 +106,7 @@ $GLOBALS['TL_DCA']['tl_site_export'] = array
 			'inputType'               => 'pageTree',
 			'eval'                    => array(
 				'mandatory' => false,
+				'multiple' => true,
 				'fieldType'=>'checkbox'
 			)
 		),
@@ -287,7 +280,7 @@ class tl_site_export extends Backend
 	}
 
 	/**
-	 * Check permissions to edit table tl_lingo_wordlist_topic
+	 * Check permissions to edit table
 	 */
 	public function checkPermission()
 	{
@@ -295,22 +288,8 @@ class tl_site_export extends Backend
 		{
 			return;
 		}
-	}
-
-
-	/**
-	 * Return the edit header button
-	 * @param array
-	 * @param string
-	 * @param string
-	 * @param string
-	 * @param string
-	 * @param string
-	 * @return string
-	 */
-	public function editHeader($row, $href, $label, $title, $icon, $attributes)
-	{
-		return ($this->User->isAdmin || count(preg_grep('/^tl_site_export::/', $this->User->alexf)) > 0) ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.specialchars($title).'"'.$attributes.'>'.$this->generateImage($icon, $label).'</a> ' : '';
+		
+		$this->redirect('contao/main.php?act=error');
 	}
 
 
@@ -326,7 +305,7 @@ class tl_site_export extends Backend
 	 */
 	public function copyTopic($row, $href, $label, $title, $icon, $attributes)
 	{
-		return ($this->User->isAdmin || $this->User->hasAccess('create', 'newsletterp')) ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.specialchars($title).'"'.$attributes.'>'.$this->generateImage($icon, $label).'</a> ' : $this->generateImage(preg_replace('/\.gif$/i', '_.gif', $icon)).' ';
+		return ($this->User->isAdmin) ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.specialchars($title).'"'.$attributes.'>'.$this->generateImage($icon, $label).'</a> ' : $this->generateImage(preg_replace('/\.gif$/i', '_.gif', $icon)).' ';
 	}
 
 
@@ -342,9 +321,7 @@ class tl_site_export extends Backend
 	 */
 	public function deleteTopic($row, $href, $label, $title, $icon, $attributes)
 	{
-		return ($this->User->isAdmin || $this->User->hasAccess('delete', 'newsletterp')) ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.specialchars($title).'"'.$attributes.'>'.$this->generateImage($icon, $label).'</a> ' : $this->generateImage(preg_replace('/\.gif$/i', '_.gif', $icon)).' ';
+		return ($this->User->isAdmin) ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.specialchars($title).'"'.$attributes.'>'.$this->generateImage($icon, $label).'</a> ' : $this->generateImage(preg_replace('/\.gif$/i', '_.gif', $icon)).' ';
 	}
+
 }
-
-
-?>

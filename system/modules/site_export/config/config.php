@@ -7,15 +7,14 @@
 $GLOBALS['BE_MOD']['system']['site_export'] = array
 (
 		'tables'     => array('tl_site_export', 'tl_site_export_rules'),
-		'icon'       => 'system/modules/site_export/html/images/html.png',
-		'export' => array('SiteExport', 'export')
-		#'stylesheet' => 'system/modules/lingolia/html/css/be_wordlist.css',
-		#'javascript' => 'system/modules/lingolia/html/js/be_wordlist.js'
+		'icon'       => 'system/modules/site_export/assets/images/html.png',
+		'export' => array('SiteExport', 'export'),
+		'stylesheet' => 'system/modules/site_export/assets/styles/site_export.css'
 );
 
 
 /* Hooks */
-#$GLOBALS['TL_HOOKS']['parseTemplate'][] = array('SiteExportHooks', 'parseTemplate');
-
+#$GLOBALS['TL_HOOKS']['outputFrontendTemplate'][] = array('SiteExportHooks', 'outputFrontendTemplateHook');
+$GLOBALS['TL_HOOKS']['generatePage'][] = array('SiteExportHooks', 'generatePage');
 
 $GLOBALS['SITEEXPORT']['ZIP']['BIN'] = '/usr/bin/zip';

@@ -33,8 +33,16 @@ class SiteExport extends Backend
 		$objSiteExport = $this->Database->prepare("SELECT * FROM `tl_site_export` WHERE `id`=?")
 			->limit(1)
 			->execute($dc->id);
-
-		$this->targetDir = $objSiteExport->targetDir;
+		
+		if (version_compare(VERSION, '3', '>='))
+		{
+			$objFolder = \FilesModel::findByPk($objSiteExport->targetDir);
+			$this->targetDir = $objFolder->path;
+		}
+		else
+		{
+			$this->targetDir = $objSiteExport->targetDir;
+		}
 
 		if (!is_writeable(TL_ROOT.'/'.$this->targetDir) || !is_dir(TL_ROOT.'/'.$this->targetDir))
 		{
@@ -47,9 +55,14 @@ class SiteExport extends Backend
 			$this->epubExport = true;
 		}
 
-		$this->pageList = deserialize($objSiteExport->pages);
-
-		$html = '<div id="tl_buttons" style="margin-bottom:10px"><a href="'.$this->getReferer(true).'" class="header_back" title="'.specialchars($GLOBALS['TL_LANG']['MSC']['backBT']).'" accesskey="b" onclick="Backend.getScrollOffset();">'.$GLOBALS['TL_LANG']['MSC']['backBT'].'</a></div>';
+		$this->pageList = deserialize($objSiteExport->pages, true);
+/*
+		if (!is_array($this->pageList))
+		{
+			$this->pageList = array($this->pageList);
+		}
+*/
+		$html = '<div id="tl_buttons" style="margin-bottom:10px"><a href="contao/main.php?do=site_export" class="header_back" title="'.specialchars($GLOBALS['TL_LANG']['MSC']['backBT']).'" accesskey="b" onclick="Backend.getScrollOffset();">'.$GLOBALS['TL_LANG']['MSC']['backBT'].'</a></div>';
 		$html .= '<div class="tl_panel">';
 
 		if ($this->Input->get('step') == 'preview')
@@ -82,8 +95,8 @@ class SiteExport extends Backend
 		}
 
 		$html .= '</div>';
-		$html .= '<div class="tl_listing_container parent_view">';
-
+		$html .= '<div class="tl_listing_container">';
+#die(var_export($this->pageList, true));
 		if ($objSiteExport->recursive && (is_array($this->pageList) || count($this->pageList) > 0))
 		{
 			for ($i=count($this->pageList)-1; $i>=0; $i--)
@@ -117,16 +130,19 @@ class SiteExport extends Backend
 					{
 						$url = $this->generateFrontendUrl($objPage->row());
 					}
-					
+
 					$strFilename = $this->getFilename($objPage);
 					
 					$this->arrFilename[$url] = $strFilename;
 
 					$this->arrPages[] = array(
 						'title' => $objPage->title,
+						'pageTitle' => $objPage->pageTitle,
 						'id' => $objPage->id,
+						'layout' => ($objSiteExport->includeLayout ? $objSiteExport->layout : FALSE),
 						'obj' => $objPage,
 						'url' => $url,
+						'httpUrl' => 'http://'.$objPage->domain.'/'.$url,
 						'filename' => $strFilename,
 						'level' => $this->getPageLevel($objPage->pid),
 						'sort' => (array_search($pageId, $this->pageList) !== FALSE ? array_search($pageId, $this->pageList) + 9000000 : $objPage->sorting)
@@ -187,7 +203,7 @@ class SiteExport extends Backend
 
 
 			$lastLevel = 0;
-			$html .= '<ul>';
+			$html .= '<ul class="site_export_tree">';
 
 			foreach ($this->arrPages as $index => $page)
 			{
@@ -220,7 +236,7 @@ class SiteExport extends Backend
 				if ($this->Input->get('step') == 'go')
 				{				
 					$file = new File($this->targetDir . '/' . $page['filename']);
-
+/*
 					// Fix, because Contao needs the page in global $objPage
 					$objPage = $page['obj'];
 
@@ -231,15 +247,44 @@ class SiteExport extends Backend
 					ob_start();
 					$objHandler->generate($objPage);	
 					$output = ob_get_clean();
+*/
+					$httpUrl = $page['httpUrl'].'?export=1'.($page['layout'] ? '&layout='.$page['layout'] : '');
 
-					$GLOBALS['TL_HOOKS']['parseTemplate'] = array();
-					
-					$output = $this->applyRules($output);
+					if (function_exists(curl_init))
+					{
+						$ch = curl_init();
 	
-					$file->write($output);
-					$file->close();
-					
-					$html .= '<li>Export … ' . $page['filename'] . ' (' . strlen($output) . ' byte)';
+						curl_setopt($ch, CURLOPT_URL, $httpUrl);
+						curl_setopt($ch, CURLOPT_REFERER, $page['httpUrl']);
+						curl_setopt($ch, CURLOPT_USERAGENT, "SiteExport");
+						curl_setopt($ch, CURLOPT_HEADER, false);
+						curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+						curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+	
+						$output = curl_exec($ch);
+	
+						curl_close($ch);
+					}
+					else
+					{
+						$output = file_get_contents($httpUrl);
+					}
+				
+#					$GLOBALS['TL_HOOKS']['parseTemplate'] = array();
+
+					if (!empty($output))
+					{
+						$output = $this->applyRules($output);
+		
+						$file->write($output);
+						$file->close();
+						
+						$html .= '<li>Export … ' . $page['filename'] . ' (' . strlen($output) . ' byte)';
+					}
+					else
+					{
+						$html .= '<li>Export … ' . $page['filename'] . ' – ERROR –';
+					}
 				}
 				else
 				{
@@ -476,7 +521,7 @@ class SiteExport extends Backend
 		for ($i=0; $i<count($pageList); $i++)
 		{
 			$strData .= $strStart."\n".
-				str_pad("\t", $pageList[$i]['level'], "\t").'{"title":"'.$pageList[$i]['title'].'","file":"'.$pageList[$i]['filename'].'"';
+				str_pad("\t", $pageList[$i]['level'], "\t").'{"title":"'.str_replace('"', '\"', $pageList[$i]['title']).'","pageTitle":"'.str_replace('"', '\"', $pageList[$i]['pageTitle']).'","file":"'.$pageList[$i]['filename'].'"';
 			
 			if ($pageList[$i]['childs'] !== FALSE)
 			{
@@ -630,7 +675,7 @@ class SiteExport extends Backend
 
 		if (is_writeable(TL_ROOT.'/'.$this->targetDir . '/images') && is_dir(TL_ROOT.'/'.$this->targetDir . '/images'))
 		{
-			$str = preg_replace_callback('~(<img.*src=")(.*(png|jpg))(")~isU', 'self::processImages', $str);
+			$str = preg_replace_callback('~(<img.*src=")(.*(png|jpg|gif))(")~isU', 'self::processImages', $str);
 			$str = preg_replace_callback('~(<link.*href=")(.*)(".*>)~isU', 'self::processStylesheets', $str);
 		}
 		
@@ -667,15 +712,29 @@ class SiteExport extends Backend
 
 		protected function processImages($match)
 		{
-			$src_image = TL_ROOT.'/'.$match[2];
+			$src_image = $match[2];
 			$filename = 'images/' . str_replace(array('/', ' '), '_', $match[2]);
-			$dest_image = TL_ROOT.'/'.$this->targetDir . '/' . $filename;
+			$dest_image = $this->targetDir . '/' . $filename;
 			
-			if (file_exists($src_image) && !file_exists($dest_image))
+			$this->import('Files');
+
+			if (file_exists(TL_ROOT.'/'.$src_image) && !file_exists(TL_ROOT.'/'.$dest_image))
 			{
-				copy($src_image, $dest_image);
+				$this->Files->copy($src_image, $dest_image);
 			}
 			
+			$arrPathInfo = pathinfo($src_image);
+			$strRetinaFilename = $arrPathInfo['dirname'].'/'.$arrPathInfo['filename'].'@2x.'.$arrPathInfo['extension'];
+			
+			if (file_exists(TL_ROOT.'/'.$strRetinaFilename))
+			{
+				$this->Files->copy($strRetinaFilename, $this->targetDir.'/images/'.str_replace(array('/', ' '), '_', $strRetinaFilename));
+			}
+			else
+			{
+#				die($strRetinaFilename);
+			}
+
 			return $match[1].'./'.$filename.$match[4];
 		}
 
@@ -748,7 +807,7 @@ class SiteExport extends Backend
 	
 			while ($tmp = readdir($handle))
 			{
-				if (in_array(strrchr($tmp, '.'), array('.html', '.xhtml', '.html5', '.css', '.jpg', 'png')))
+				if (in_array(strrchr($tmp, '.'), array('.html', '.xhtml', '.html5', '.css', '.jpg', 'png', 'gif')))
 				{
 					if (is_writeable(TL_ROOT.'/'.$path.'/'.$tmp) && is_file(TL_ROOT.'/'.$path.'/'.$tmp))
 					{
@@ -825,6 +884,7 @@ class SiteExport extends Backend
 	
 }
 
+/*
 class MyPageRegular extends PageRegular
 {
 	public function __construct()
@@ -832,3 +892,4 @@ class MyPageRegular extends PageRegular
 		parent::__construct();
 	}
 }
+*/

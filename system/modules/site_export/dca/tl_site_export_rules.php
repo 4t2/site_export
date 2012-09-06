@@ -88,7 +88,7 @@ $GLOBALS['TL_DCA']['tl_site_export_rules'] = array
 	'palettes' => array
 	(
 		'__selector__'                => array('isRegex'),
-		'default'                     => '{title_legend},title;{rules_legend},pattern,replacement;{regex_legend},isRegex;{apply_legend},isActive'
+		'default'                     => '{title_legend},title,isActive;{rules_legend},pattern,replacement;{regex_legend},isRegex'
 	),
 	
 	// Subpalettes
@@ -106,7 +106,14 @@ $GLOBALS['TL_DCA']['tl_site_export_rules'] = array
 			'search'                  => true,
 			'exclude'                 => true,
 			'inputType'               => 'text',
-			'eval'                    => array('mandatory'=>true, 'decodeEntities'=>true, 'maxlength'=>255)
+			'eval'                    => array('tl_class'=>'w50', 'mandatory'=>true, 'decodeEntities'=>true, 'maxlength'=>255)
+		),
+		'isActive' => array
+		(
+			'label'			=> &$GLOBALS['TL_LANG']['tl_site_export_rules']['isActive'],
+			'exclude'		=> true,
+			'inputType'		=> 'checkbox',
+			'eval'          => array('tl_class'=>'w50 m12')
 		),
 		'pattern' => array
 		(
@@ -182,14 +189,6 @@ $GLOBALS['TL_DCA']['tl_site_export_rules'] = array
 			'exclude'		=> true,
 			'inputType'		=> 'checkbox',
 			'eval'          => array('tl_class'=>'w50')
-		),
-		
-		'isActive' => array
-		(
-			'label'			=> &$GLOBALS['TL_LANG']['tl_site_export_rules']['isActive'],
-			'exclude'		=> true,
-			'inputType'		=> 'checkbox',
-			'eval'          => array('tl_class'=>'w50')
 		)
 	)
 
@@ -222,68 +221,7 @@ class tl_site_export_rules extends Backend
 			return;
 		}
 
-		// Set root IDs
-		if (!is_array($this->User->newsletters) || count($this->User->newsletters) < 1)
-		{
-			$root = array(0);
-		}
-		else
-		{
-			$root = $this->User->newsletters;
-		}
-
-		$id = strlen($this->Input->get('id')) ? $this->Input->get('id') : CURRENT_ID;
-
-		// Check current action
-		switch ($this->Input->get('act'))
-		{
-			case 'paste':
-			case 'select':
-				// Allow
-				break;
-
-			case 'create':
-				if (!strlen($this->Input->get('pid')) || !in_array($this->Input->get('pid'), $root))
-				{
-					$this->log('Not enough permissions to create newsletters in channel ID "'.$this->Input->get('pid').'"', 'tl_site_export_rules checkPermission', TL_ERROR);
-					$this->redirect('contao/main.php?act=error');
-				}
-				break;
-
-			case 'cut':
-			case 'copy':
-				if (!in_array($this->Input->get('pid'), $root))
-				{
-					$this->log('Not enough permissions to '.$this->Input->get('act').' wordlist ID "'.$id.'" to channel ID "'.$this->Input->get('pid').'"', 'tl_site_export_rules checkPermission', TL_ERROR);
-					$this->redirect('contao/main.php?act=error');
-				}
-				// NO BREAK STATEMENT HERE
-
-			case 'edit':
-			case 'show':
-			case 'delete':
-				if (!in_array($this->Input->get('pid'), $root))
-				{
-					$this->log('Not enough permissions to '.$this->Input->get('act').' wordlist ID "'.$id.'" to channel ID "'.$this->Input->get('pid').'"', 'tl_site_export_rules checkPermission', TL_ERROR);
-					$this->redirect('contao/main.php?act=error');
-				}
-				
-				break;
-
-			case 'editAll':
-			case 'deleteAll':
-			case 'overrideAll':
-			case 'cutAll':
-			case 'copyAll':
-
-			default:
-				if (strlen($this->Input->get('act')))
-				{
-					$this->log('Invalid command "'.$this->Input->get('act').'"', 'tl_site_export_rules checkPermission', TL_ERROR);
-					$this->redirect('contao/main.php?act=error');
-				}
-				break;
-		}
+		$this->redirect('contao/main.php?act=error');
 	}
 
 
@@ -391,7 +329,7 @@ class tl_site_export_rules extends Backend
 	 */
 	public function listExportRules($arrRow)
 	{
-		$return = $arrRow['title'] . ($arrRow['isRegex'] ? ' (regulärer Ausdruck)' : ' (einfache Ersetzung');
+		$return = $arrRow['title'] . ($arrRow['isRegex'] ? ' (RegEx)' : '');
 
 		if ($arrRow['isActive'] == '1')
 		{
@@ -405,10 +343,3 @@ class tl_site_export_rules extends Backend
 
 }
 
-
-
-
-
-
-
-?>
