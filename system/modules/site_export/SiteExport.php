@@ -3,14 +3,13 @@
 /**
  * Class SiteExport
  *
- * @copyright  Lingo4you 2011
- * @author     Mario Müller <http://www.lingo4u.de/>
+ * @copyright  Lingo4you 2013
+ * @author     Mario Müller <http://www.lingolia.com/>
  * @package    SiteExport
  * @license    http://opensource.org/licenses/lgpl-3.0.html
  */
 class SiteExport extends Backend
 {
-
 	protected $arrPages = array();
 	protected $pageList = array();
 	protected $targetDir;
@@ -23,7 +22,7 @@ class SiteExport extends Backend
 	 * Export a theme
 	 * @param object
 	 */
-	public function export(DataContainer $dc)
+	public function export($dc)
 	{
 		global $objPage;
 
@@ -122,27 +121,37 @@ class SiteExport extends Backend
 						$objPage->layout = $objSiteExport->layout;
 					}
 					
-					if (version_compare(VERSION, '2.10', '>'))
-					{
-						$url = $this->generateFrontendUrl($objPage->row(), null, $objPage->language);
-					}
-					else
-					{
-						$url = $this->generateFrontendUrl($objPage->row());
-					}
-
 					$strFilename = $this->getFilename($objPage);
 					
 					$this->arrFilename[$url] = $strFilename;
+					
+					$strDomain = $this->Environment->base;
+
+					if ($objPage->domain != '')
+					{
+						$strDomain = ($this->Environment->ssl ? 'https://' : 'http://') . $objPage->domain . TL_PATH . '/';
+					}
+					
+					if ($GLOBALS['TL_CONFIG']['addLanguageToUrl'])
+					{
+						$strUrl = $this->generateFrontendUrl($objPage->row(), null, $objPage->rootLanguage);
+					}
+					else
+					{
+						$strUrl = $this->generateFrontendUrl($objTarget->row());
+					}
+					
+					$pageLayout = ($objSiteExport->includeLayout ? $objSiteExport->layout : FALSE);
 
 					$this->arrPages[] = array(
 						'title' => $objPage->title,
 						'pageTitle' => $objPage->pageTitle,
 						'id' => $objPage->id,
-						'layout' => ($objSiteExport->includeLayout ? $objSiteExport->layout : FALSE),
+						'pid' => $objPage->pid,
+						'layout' => $pageLayout,
 						'obj' => $objPage,
-						'url' => $url,
-						'httpUrl' => 'http://'.$objPage->domain.'/'.$url,
+						'url' => $strDomain.$strUrl,
+						'exportUrl' => $strDomain.$strUrl.'?export=1'.($pageLayout ? '&layout='.$pageLayout : ''),
 						'filename' => $strFilename,
 						'level' => $this->getPageLevel($objPage->pid),
 						'sort' => (array_search($pageId, $this->pageList) !== FALSE ? array_search($pageId, $this->pageList) + 9000000 : $objPage->sorting)
@@ -248,14 +257,13 @@ class SiteExport extends Backend
 					$objHandler->generate($objPage);	
 					$output = ob_get_clean();
 */
-					$httpUrl = $page['httpUrl'].'?export=1'.($page['layout'] ? '&layout='.$page['layout'] : '');
 
 					if (function_exists(curl_init))
 					{
 						$ch = curl_init();
 	
-						curl_setopt($ch, CURLOPT_URL, $httpUrl);
-						curl_setopt($ch, CURLOPT_REFERER, $page['httpUrl']);
+						curl_setopt($ch, CURLOPT_URL, $page['exportUrl']);
+						curl_setopt($ch, CURLOPT_REFERER, $page['exportUrl']);
 						curl_setopt($ch, CURLOPT_USERAGENT, "SiteExport");
 						curl_setopt($ch, CURLOPT_HEADER, false);
 						curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -267,17 +275,14 @@ class SiteExport extends Backend
 					}
 					else
 					{
-						$output = file_get_contents($httpUrl);
+						$output = file_get_contents($page['exportUrl']);
 					}
-				
-#					$GLOBALS['TL_HOOKS']['parseTemplate'] = array();
 
 					if (!empty($output))
 					{
 						$output = $this->applyRules($output);
 		
 						$file->write($output);
-						$file->close();
 						
 						$html .= '<li>Export … ' . $page['filename'] . ' (' . strlen($output) . ' byte)';
 					}
@@ -285,10 +290,12 @@ class SiteExport extends Backend
 					{
 						$html .= '<li>Export … ' . $page['filename'] . ' – ERROR –';
 					}
+					
+					$file->close();
 				}
 				else
 				{
-					$html .= '<li>' . $page['filename'] .'';
+					$html .= '<li title="'.$page['url'].'">' . $page['filename'] .'';
 				}
 				
 				if ($objSiteExport->toc != 'none')
@@ -321,14 +328,21 @@ class SiteExport extends Backend
 			$this->log('Export ID '.$dc->id.': No pages found!', 'SiteExport', TL_FILES);
 			return 'Export ID '.$dc->id.': No pages found!';
 		}
-		
+
 		$html .= '</li></ul></div>';
 
 
-		$pageList = $this->getPageList($this->arrPages, 0);
-		
-		if ($objSiteExport->toc == 'json')
+		if (in_array($objSiteExport->toc, array('flat_json', 'json')))
 		{
+			if ($objSiteExport->toc == 'json')
+			{
+				$pageList = $this->getPageList($this->arrPages, 0);
+			}
+			else
+			{
+				$pageList = $this->arrPages;
+			}
+			
 			$strJSON = '{"toc":['.$this->getJSON($pageList)."\n]}";
 			
 			$file = new File($this->targetDir . '/toc.json');
@@ -521,9 +535,9 @@ class SiteExport extends Backend
 		for ($i=0; $i<count($pageList); $i++)
 		{
 			$strData .= $strStart."\n".
-				str_pad("\t", $pageList[$i]['level'], "\t").'{"title":"'.str_replace('"', '\"', $pageList[$i]['title']).'","pageTitle":"'.str_replace('"', '\"', $pageList[$i]['pageTitle']).'","file":"'.$pageList[$i]['filename'].'"';
-			
-			if ($pageList[$i]['childs'] !== FALSE)
+				str_pad("\t", $pageList[$i]['level'], "\t").'{"title":"'.str_replace('"', '\"', $pageList[$i]['title']).'","pageTitle":"'.str_replace('"', '\"', $pageList[$i]['pageTitle']).'","file":"'.$pageList[$i]['filename'].'","id":"'.$pageList[$i]['id'].'","pid":"'.$pageList[$i]['pid'].'"';
+
+			if (is_array($pageList[$i]['childs']))
 			{
 #die(var_export($pageList[$i]['childs'], true));
 				$strData .= ', "childs":'."\n".str_pad("\t", $pageList[$i]['level'], "\t")."[".$this->getJSON($pageList[$i]['childs'])."\n".str_pad("\t", $pageList[$i]['level'])."]";
@@ -729,10 +743,6 @@ class SiteExport extends Backend
 			if (file_exists(TL_ROOT.'/'.$strRetinaFilename))
 			{
 				$this->Files->copy($strRetinaFilename, $this->targetDir.'/images/'.str_replace(array('/', ' '), '_', $strRetinaFilename));
-			}
-			else
-			{
-#				die($strRetinaFilename);
 			}
 
 			return $match[1].'./'.$filename.$match[4];

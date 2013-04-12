@@ -22,7 +22,8 @@ $GLOBALS['TL_LANG']['tl_site_export']['toc']['reference'] = array(
 	'none' => 'kein Inhaltsverzeichnis',
 	'flat' => 'flaches Inhaltsverzeichnis',
 	'indent' => 'eingerücktes Inhaltsverzeichnis',
-	'json' => 'eingerücktes HTML + JSON'
+	'json' => 'eingerücktes Inhaltsverzeichnis + JSON',
+	'flat_json' => 'flaches Inhaltsverzeichnis + JSON'
 );
 $GLOBALS['TL_LANG']['tl_site_export']['targetDir'] = array('Exportverzeichnis', 'Bitte wählen Sie einen Ordner aus der Dateiübersicht.');
 $GLOBALS['TL_LANG']['tl_site_export']['exportEpub'] = array('Epub erstellen', 'Ein E-Book im Format Epub erstellen.');
@@ -51,5 +52,3 @@ $GLOBALS['TL_LANG']['tl_site_export']['editheader'] = array('Export-Einstellunge
 $GLOBALS['TL_LANG']['tl_site_export']['copy']       = array('Export-Set duplizieren', 'Export-Set ID %s duplizieren');
 $GLOBALS['TL_LANG']['tl_site_export']['delete']     = array('Export-Set löschen', 'Export-Set ID %s löschen');
 $GLOBALS['TL_LANG']['tl_site_export']['export']     = array('Export starten', 'Den Export jetzt starten');
-
-?>

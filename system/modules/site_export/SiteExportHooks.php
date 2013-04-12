@@ -24,11 +24,14 @@ class SiteExportHooks extends PageRegular
 
 		return $strContent;
 	}
-	 
+
 	public function generatePage($objPage, $objLayout, $objPageRegular)
 	{
 		if ($this->Input->get('export') == '1')
 		{
+			$GLOBALS['SITE_EXPORT'] = true;
+			$GLOBALS['TL_CONFIG']['enableSearch'] = false;
+
 			if ($this->Input->get('layout') != '' && is_numeric($this->Input->get('layout')))
 			{
 				$objPage->layout = (int)$this->Input->get('layout');
@@ -155,6 +158,8 @@ class SiteExportHooks extends PageRegular
 					$objPageRegular->Template->sections = $arrCustomSections;
 				} /* end Contao 2 code */
 			}
+			
+			unset($GLOBALS['SITE_EXPORT']);
 		}
 	}
 }

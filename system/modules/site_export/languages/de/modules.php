@@ -13,5 +13,3 @@
  * Back end modules
  */
 $GLOBALS['TL_LANG']['MOD']['site_export'] = array('Seiten-Export', 'Seiten exportieren');
-
-?>
