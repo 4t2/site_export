@@ -676,7 +676,8 @@ class SiteExport extends Backend
 		{
 			chmod(TL_ROOT.'/'.$this->targetDir, 0777);
 		}
-		
+
+		/* copy images files */		
 		if (!is_dir(TL_ROOT.'/'.$this->targetDir . '/images'))
 		{
 			mkdir(TL_ROOT.'/'.$this->targetDir . '/images');
@@ -690,9 +691,27 @@ class SiteExport extends Backend
 		if (is_writeable(TL_ROOT.'/'.$this->targetDir . '/images') && is_dir(TL_ROOT.'/'.$this->targetDir . '/images'))
 		{
 			$str = preg_replace_callback('~(<img.*src=")(.*(png|jpg|gif))(")~isU', 'self::processImages', $str);
-			$str = preg_replace_callback('~(<link.*href=")(.*)(".*>)~isU', 'self::processStylesheets', $str);
 		}
-		
+
+		/* copy audio files */
+		if (!is_dir(TL_ROOT.'/'.$this->targetDir . '/audio'))
+		{
+			mkdir(TL_ROOT.'/'.$this->targetDir . '/audio');
+
+			if (!is_writeable(TL_ROOT.'/'.$this->targetDir . '/audio') && is_dir(TL_ROOT.'/'.$this->targetDir . '/audio'))
+			{
+				chmod(TL_ROOT.'/'.$this->targetDir . '/audio', 0777);
+			}
+		}
+
+		if (is_writeable(TL_ROOT.'/'.$this->targetDir . '/audio') && is_dir(TL_ROOT.'/'.$this->targetDir . '/audio'))
+		{
+			$str = preg_replace_callback('~(<source.*src=")(.*(mp3|ogg))(")~isU', 'self::processAudio', $str);
+		}
+
+		/* copy stylesheets */
+		$str = preg_replace_callback('~(<link.*href=")(.*)(".*>)~isU', 'self::processStylesheets', $str);
+
 		if ($this->epubExport)
 		{
 #			$str = str_ireplace('</head>', )
@@ -748,6 +767,22 @@ class SiteExport extends Backend
 			return $match[1].'./'.$filename.$match[4];
 		}
 
+
+		protected function processAudio($match)
+		{
+			$src_audio = $match[2];
+			$filename = 'audio/' . str_replace(array('/', ' '), '_', $src_audio);
+			$dest_audio = $this->targetDir . '/' . $filename;
+
+			$this->import('Files');
+
+			if (file_exists(TL_ROOT.'/'.$src_audio) && !file_exists(TL_ROOT.'/'.$dest_audio))
+			{
+				$this->Files->copy($src_audio, $dest_audio);
+			}
+
+			return $match[1].'./'.$filename.$match[4];
+		}
 
 		protected function processStylesheets($match)
 		{
