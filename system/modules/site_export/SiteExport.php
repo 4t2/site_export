@@ -138,7 +138,7 @@ class SiteExport extends Backend
 					}
 					else
 					{
-						$strUrl = $this->generateFrontendUrl($objTarget->row());
+						$strUrl = $this->generateFrontendUrl($objPage->row());
 					}
 					
 					$pageLayout = ($objSiteExport->includeLayout ? $objSiteExport->layout : FALSE);
