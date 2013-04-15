@@ -46,7 +46,7 @@ class SiteExport extends Backend
 		if (!is_writeable(TL_ROOT.'/'.$this->targetDir) || !is_dir(TL_ROOT.'/'.$this->targetDir))
 		{
 			$this->log('Das Export-Verzeichnis '.$this->targetDir.' existiert nicht oder ist nicht beschreibbar.', 'SiteExport', TL_ERROR);
-			return '<div><strong>Fehler:</strong> Das Export-Verzeichnis '.$this->targetDir.' existiert nicht oder ist nicht beschreibbar.</div>';
+			return '<div>'.sprintf($GLOBALS['TL_LANG']['MSC']['exportDirectoryError'], $this->targetDir).'</div>';
 		}
 
 		if ($objSiteExport->exportEpub == '1')
@@ -67,21 +67,21 @@ class SiteExport extends Backend
 		if ($this->Input->get('step') == 'preview')
 		{
 			$html .= '<div style="float:left; padding-left: 10px;"><div style="padding-top: 6px;">'.$GLOBALS['TL_LANG']['MSC']['PreviewPagesToExport'].'</div></div>';
-			$html .= '<div style="float:right; padding-right: 4px;"><form method="get" class="popup info" id="site_export" action="'.$this->Environment->script.'"><div class="tl_formbody"><input type="submit" value="Export starten" title="Export mit angezeigten Seiten starten" class="tl_submit"><input type="hidden" name="do" value="site_export"><input type="hidden" name="key" value="export"><input type="hidden" name="step" value="go"><input type="hidden" name="id" value="'.$dc->id.'"></div></form></div>';
+			$html .= '<div style="float:right; padding-right: 4px;"><form method="get" class="popup info" id="site_export" action="'.$this->Environment->script.'"><div class="tl_formbody"><input type="submit" value="'.$GLOBALS['TL_LANG']['MSC']['startExport'].'" title="'.$GLOBALS['TL_LANG']['MSC']['startExportTitle'].'" class="tl_submit"><input type="hidden" name="do" value="site_export"><input type="hidden" name="key" value="export"><input type="hidden" name="step" value="go"><input type="hidden" name="id" value="'.$dc->id.'"></div></form></div>';
 			$html .= '<div class="clear"></div>';
 			
-			$html .= '<div style="padding-top: 8px;"><strong>Hinweis:</strong> Beim Export werden vorhandene Dateien und Bilder im Verzeichnis '.$this->targetDir.' gelöscht.</div>';
+			$html .= '<div style="padding-top: 8px;">'.sprintf($GLOBALS['TL_LANG']['MSC']['existingFilesDeleted'], $this->targetDir).'</div>';
 		}
 		elseif ($this->Input->get('step') == 'go')
 		{
 			$files = Files::getInstance();
 			$files->rrdir($this->targetDir);
 
-			$html .= '<div style="float:left; padding-left: 10px;"><div style="padding-top: 6px;">Seiten wurden exportiert.</div></div>';
+			$html .= '<div style="float:left; padding-left: 10px;"><div style="padding-top: 6px;">'.$GLOBALS['TL_LANG']['MSC']['pagesExported'].'</div></div>';
 			
 			if ($this->epubExport)
 			{
-				$html .= '<div style="float:right; padding-right: 4px;"><form method="get" class="popup info" id="site_export" action="'.$this->Environment->script.'"><div class="tl_formbody"><input type="submit" value="Epub erzeugen" title="exportierte Seiten als Epub packen" class="tl_submit"><input type="hidden" name="do" value="site_export"><input type="hidden" name="key" value="export"><input type="hidden" name="step" value="epub"><input type="hidden" name="id" value="'.$dc->id.'"></div></form></div>';
+				$html .= '<div style="float:right; padding-right: 4px;"><form method="get" class="popup info" id="site_export" action="'.$this->Environment->script.'"><div class="tl_formbody"><input type="submit" value="'.$GLOBALS['TL_LANG']['MSC']['generateEpub'].'" title="'.$GLOBALS['TL_LANG']['MSC']['generateEpubTitle'].'" class="tl_submit"><input type="hidden" name="do" value="site_export"><input type="hidden" name="key" value="export"><input type="hidden" name="step" value="epub"><input type="hidden" name="id" value="'.$dc->id.'"></div></form></div>';
 			}
 #			$html .= '<div style="float:right; padding-right: 4px;"><form method="get" class="popup info" id="site_export" action="'.$this->Environment->script.'"><div class="tl_formbody"><input type="submit" value="Kindle erzeugen" title="exportierte Seiten als Epub packen" class="tl_submit"><input type="hidden" name="do" value="site_export"><input type="hidden" name="key" value="export"><input type="hidden" name="step" value="mobi"><input type="hidden" name="id" value="'.$dc->id.'"></div></form></div>';
 			$html .= '<div class="clear"></div>';
@@ -284,11 +284,11 @@ class SiteExport extends Backend
 		
 						$file->write($output);
 						
-						$html .= '<li>Export … ' . $page['filename'] . ' (' . strlen($output) . ' byte)';
+						$html .= '<li>' . $GLOBALS['TL_LANG']['MSC']['se_export'] .' ' . $page['filename'] . ' (' . strlen($output) . ' byte)';
 					}
 					else
 					{
-						$html .= '<li>Export … ' . $page['filename'] . ' – ERROR –';
+						$html .= '<li>' . $GLOBALS['TL_LANG']['MSC']['se_export'] .' ' . $page['filename'] . ' ' . $GLOBALS['TL_LANG']['MSC']['se_error'];
 					}
 					
 					$file->close();
@@ -326,7 +326,7 @@ class SiteExport extends Backend
 		else
 		{
 			$this->log('Export ID '.$dc->id.': No pages found!', 'SiteExport', TL_FILES);
-			return 'Export ID '.$dc->id.': No pages found!';
+			return sprintf($GLOBALS['TL_LANG']['MSC']['noPagesFound'], $dc->id);
 		}
 
 		$html .= '</li></ul></div>';
