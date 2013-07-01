@@ -78,13 +78,14 @@ $GLOBALS['TL_DCA']['tl_site_export'] = array
 	'palettes' => array
 	(
 		'__selector__'                => array('includeLayout', 'exportEpub'),
-		'default'                     => '{title_legend},title;{page_legend},pages,recursive;{export_legend},targetDir,includeLayout,toc;{epub_legend},exportEpub'
+		'default'                     => '{title_legend},title;{page_legend},pages,recursive;{export_legend},targetDir,includeLayout,toc,rulesFrom;{epub_legend},exportEpub'
 	),
 
 	// Subpalettes
 	'subpalettes' => array
 	(
 		'includeLayout'               => 'layout',
+#		'exportPdf'                   => 'pdfFilename,pdfCover,pdfTitle',
 		'exportEpub'                  => 'ebookFilename,ebookCover,ebookTitle,ebookDescription,ebookIdentifier,ebookSubject,ebookLanguage,ebookCreator,ebookPublisher,ebookDate'
 	),
 	
@@ -139,7 +140,23 @@ $GLOBALS['TL_DCA']['tl_site_export'] = array
 			'inputType'               => 'select',
 			'options'                 => array('none', 'flat', 'indent', 'json', 'flat_json'),
 			'reference'				  => &$GLOBALS['TL_LANG']['tl_site_export']['toc']['reference'],
-			'eval'                    => array('maxlength'=>32, 'tl_class'=>'w50', 'tl_class'=>'clr')
+			'eval'                    => array
+			(
+				'maxlength'				=> 32,
+				'tl_class'				=> 'w50 clr'
+			)
+		),
+		'rulesFrom' => array
+		(
+			'label'					=> &$GLOBALS['TL_LANG']['tl_site_export']['rulesFrom'],
+			'inputType'				=> 'select',
+			'options_callback'		=> array('tl_site_export', 'getRulesFrom'),
+			'eval'					=> array
+			(
+				'findInSet'				=> true,
+				'includeBlankOption'	=> true,
+				'tl_class'				=> 'w50'
+			)
 		),
 		'targetDir' => array
 		(
@@ -255,6 +272,20 @@ class tl_site_export extends Backend
 		$this->import('BackendUser', 'User');
 	}
 
+
+	public function getRulesFrom($dc)
+	{
+		$objSiteExport = $this->Database->prepare("SELECT `id`, `title` FROM `tl_site_export` WHERE `id`<>?")->execute($dc->activeRecord->id);
+
+		$arrSiteExport = array();
+		while ($objSiteExport->next())
+		{
+#die('<pre>'.var_export($objSiteExport, true));
+			$arrSiteExport[$objSiteExport->id] = $objSiteExport->title . ' (ID '.$objSiteExport->id.')';
+		}
+#die('<pre>'.var_export($arrSiteExport, true));
+		return $arrSiteExport;
+	}
 
 	/**
 	 * Return all page layouts grouped by theme

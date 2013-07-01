@@ -11,12 +11,13 @@
 class SiteExport extends Backend
 {
 	protected $arrPages = array();
-	protected $pageList = array();
-	protected $targetDir;
+	protected $arrPageList = array();
+	protected $strTargetFolder;
 	protected $arrParentId = array();
 	protected $exportRules = array();
 	protected $epubExport = false;
 	protected $arrFilename = array();
+
 
 	/**
 	 * Export a theme
@@ -32,87 +33,73 @@ class SiteExport extends Backend
 		$objSiteExport = $this->Database->prepare("SELECT * FROM `tl_site_export` WHERE `id`=?")
 			->limit(1)
 			->execute($dc->id);
-		
-		if (version_compare(VERSION, '3', '>='))
+
+		if (($this->strTargetFolder = $this->getTargetFolder($objSiteExport)) === false)
 		{
-			$objFolder = \FilesModel::findByPk($objSiteExport->targetDir);
-			$this->targetDir = $objFolder->path;
-		}
-		else
-		{
-			$this->targetDir = $objSiteExport->targetDir;
+			return '<div><strong>'.sprintf($GLOBALS['TL_LANG']['MSC']['exportDirectoryError'], $this->targetDir).'</strong></div>';
 		}
 
-		if (!is_writeable(TL_ROOT.'/'.$this->targetDir) || !is_dir(TL_ROOT.'/'.$this->targetDir))
-		{
-			$this->log('Das Export-Verzeichnis '.$this->targetDir.' existiert nicht oder ist nicht beschreibbar.', 'SiteExport', TL_ERROR);
-			return '<div><strong>Fehler:</strong> Das Export-Verzeichnis '.$this->targetDir.' existiert nicht oder ist nicht beschreibbar.</div>';
-		}
+		$this->exportEpub = $objSiteExport->exportEpub;
 
-		if ($objSiteExport->exportEpub == '1')
-		{
-			$this->epubExport = true;
-		}
+		$this->arrPageList = deserialize($objSiteExport->pages, true);
 
-		$this->pageList = deserialize($objSiteExport->pages, true);
-/*
-		if (!is_array($this->pageList))
-		{
-			$this->pageList = array($this->pageList);
-		}
-*/
 		$html = '<div id="tl_buttons" style="margin-bottom:10px"><a href="contao/main.php?do=site_export" class="header_back" title="'.specialchars($GLOBALS['TL_LANG']['MSC']['backBT']).'" accesskey="b" onclick="Backend.getScrollOffset();">'.$GLOBALS['TL_LANG']['MSC']['backBT'].'</a></div>';
 		$html .= '<div class="tl_panel">';
 
 		if ($this->Input->get('step') == 'preview')
 		{
-			$html .= '<div style="float:left; padding-left: 10px;"><div style="padding-top: 6px;">Vorschau der zu exportierenden Seiten.</div></div>';
-			$html .= '<div style="float:right; padding-right: 4px;"><form method="get" class="popup info" id="site_export" action="'.$this->Environment->script.'"><div class="tl_formbody"><input type="submit" value="Export starten" title="Export mit angezeigten Seiten starten" class="tl_submit"><input type="hidden" name="do" value="site_export"><input type="hidden" name="key" value="export"><input type="hidden" name="step" value="go"><input type="hidden" name="id" value="'.$dc->id.'"></div></form></div>';
+			$html .= sprintf('<div style="float:left; padding-left: 10px;"><div style="padding-top: 6px;">%s</div></div>', $GLOBALS['TL_LANG']['MSC']['previewPagesToExport']);
+			$html .= sprintf('<div style="float:right; padding-right: 4px;"><form method="get" class="popup info" id="site_export" action="%s"><div class="tl_formbody"><button type="submit" name="step" value="go" class="tl_submit button_html"><span>%s</span></button><input type="hidden" name="do" value="site_export"><input type="hidden" name="key" value="export"><input type="hidden" name="id" value="'.$dc->id.'"></div></form></div>', $this->Environment->script, $GLOBALS['TL_LANG']['MSC']['startExport']);
 			$html .= '<div class="clear"></div>';
 			
-			$html .= '<div style="padding-top: 8px;"><strong>Hinweis:</strong> Beim Export werden vorhandene Dateien und Bilder im Verzeichnis '.$this->targetDir.' gelöscht.</div>';
+			$html .= '<div style="padding-top: 8px;">'.sprintf($GLOBALS['TL_LANG']['MSC']['deleteExistingFiles'], $this->strTargetFolder).'</div>';
 		}
 		elseif ($this->Input->get('step') == 'go')
 		{
 			$files = Files::getInstance();
-			$files->rrdir($this->targetDir);
+			$files->rrdir($this->strTargetFolder);
 
-			$html .= '<div style="float:left; padding-left: 10px;"><div style="padding-top: 6px;">Seiten wurden exportiert.</div></div>';
-			
-			if ($this->epubExport)
+			if ($this->exportEpub)
 			{
-				$html .= '<div style="float:right; padding-right: 4px;"><form method="get" class="popup info" id="site_export" action="'.$this->Environment->script.'"><div class="tl_formbody"><input type="submit" value="Epub erzeugen" title="exportierte Seiten als Epub packen" class="tl_submit"><input type="hidden" name="do" value="site_export"><input type="hidden" name="key" value="export"><input type="hidden" name="step" value="epub"><input type="hidden" name="id" value="'.$dc->id.'"></div></form></div>';
+				$html .= '<div style="float:left; padding-left: 10px;"><div style="padding-top: 6px;">'.$GLOBALS['TL_LANG']['MSC']['pagesExportedTitle'].'</div></div>';
+				
+				$html .= '<div style="float:right; padding-right: 4px;"><form method="get" class="popup info" id="site_export" action="'.$this->Environment->script.'"><div class="tl_formbody">';
+				
+				$html .= '<button type="submit" name="step" value="epub" class="tl_submit button_epub" title="'.$GLOBALS['TL_LANG']['MSC']['generateEpubTitle'].'"><span>'.$GLOBALS['TL_LANG']['MSC']['generateEpub'].'</span></button>';
+
+				$html .= '<input type="hidden" name="do" value="site_export"><input type="hidden" name="key" value="export"><input type="hidden" name="id" value="'.$dc->id.'"></div></form></div>';
+				$html .= '<div class="clear"></div>';
 			}
-#			$html .= '<div style="float:right; padding-right: 4px;"><form method="get" class="popup info" id="site_export" action="'.$this->Environment->script.'"><div class="tl_formbody"><input type="submit" value="Kindle erzeugen" title="exportierte Seiten als Epub packen" class="tl_submit"><input type="hidden" name="do" value="site_export"><input type="hidden" name="key" value="export"><input type="hidden" name="step" value="mobi"><input type="hidden" name="id" value="'.$dc->id.'"></div></form></div>';
-			$html .= '<div class="clear"></div>';
+			else
+			{
+				$html .= '<div style="padding-left: 10px;"><div style="padding-top: 6px;">'.$GLOBALS['TL_LANG']['MSC']['pagesExportedTitle'].'</div></div>';
+			}	
 		}
 		elseif ($this->Input->get('step') == 'epub')
 		{
-			$html .= '<div style="float:left; padding-left: 10px;"><div style="padding-top: 6px;">Epub Export.</div></div>';
-			$html .= '<div style="float:right; padding-right: 4px;"><form method="get" class="popup info" id="site_export" action="' . $objSiteExport->targetDir.'/'.$objSiteExport->ebookFilename.'"><div class="tl_formbody"><input type="submit" value="Epub Download" title="exportierte Seiten als Epub herunterladen" class="tl_submit"></div></form></div>';
+			$html .= '<div style="float:left; padding-left: 10px;"><div style="padding-top: 6px;">'.$GLOBALS['TL_LANG']['MSC']['generateEpub'].'</div></div>';
+			$html .= '<div style="float:right; padding-right: 4px;"><form method="get" class="popup info" id="site_export" action="' . $objSiteExport->targetDir.'/'.$objSiteExport->ebookFilename.'"><div class="tl_formbody">';
+			$html = sprintf('<input type="submit" value="%s" title="%s" class="tl_submit"></div></form></div>', $GLOBALS['TL_LANG']['MSC']['epubDownload'], $GLOBALS['TL_LANG']['MSC']['epubDownloadTitle'] );
 			$html .= '<div class="clear"></div>';
 		}
 
 		$html .= '</div>';
 		$html .= '<div class="tl_listing_container">';
-#die(var_export($this->pageList, true));
-		if ($objSiteExport->recursive && (is_array($this->pageList) || count($this->pageList) > 0))
+
+		if ($objSiteExport->recursive && (is_array($this->arrPageList) || count($this->arrPageList) > 0))
 		{
-			for ($i=count($this->pageList)-1; $i>=0; $i--)
+			for ($i=count($this->arrPageList)-1; $i>=0; $i--)
 			{
-				array_splice($this->pageList, $i+1, 0, $this->getChildPages($this->pageList[$i]));
+				array_splice($this->arrPageList, $i+1, 0, $this->getChildPages($this->arrPageList[$i]));
 			}
 		}
 
-		if (count($this->pageList) > 0)
+		if (count($this->arrPageList) > 0)
 		{
-			foreach ($this->pageList as $pageId)
+			foreach ($this->arrPageList as $pageId)
 			{
-				#$objPage = $this->Database->prepare("SELECT * FROM `tl_page` WHERE `id`=?")->limit(1)->execute($pageId);
-				
 				$objPage = $this->getPageDetails($pageId);
 
-				#if ($objPage->numRows > 0)
 				if ($objPage != null)
 				{
 					if ($objSiteExport->includeLayout)
@@ -120,18 +107,16 @@ class SiteExport extends Backend
 						$objPage->includeLayout = $objSiteExport->includeLayout;
 						$objPage->layout = $objSiteExport->layout;
 					}
-					
+
 					$strFilename = $this->getFilename($objPage);
-					
-					$this->arrFilename[$url] = $strFilename;
-					
+
 					$strDomain = $this->Environment->base;
 
 					if ($objPage->domain != '')
 					{
 						$strDomain = ($this->Environment->ssl ? 'https://' : 'http://') . $objPage->domain . TL_PATH . '/';
 					}
-					
+
 					if ($GLOBALS['TL_CONFIG']['addLanguageToUrl'])
 					{
 						$strUrl = $this->generateFrontendUrl($objPage->row(), null, $objPage->rootLanguage);
@@ -140,7 +125,9 @@ class SiteExport extends Backend
 					{
 						$strUrl = $this->generateFrontendUrl($objPage->row());
 					}
-					
+
+					$this->arrFilename[$strUrl] = $strFilename;
+
 					$pageLayout = ($objSiteExport->includeLayout ? $objSiteExport->layout : FALSE);
 
 					$this->arrPages[] = array(
@@ -151,10 +138,11 @@ class SiteExport extends Backend
 						'layout' => $pageLayout,
 						'obj' => $objPage,
 						'url' => $strDomain.$strUrl,
+						'layout' => $pageLayout,
 						'exportUrl' => $strDomain.$strUrl.'?export=1'.($pageLayout ? '&layout='.$pageLayout : ''),
 						'filename' => $strFilename,
 						'level' => $this->getPageLevel($objPage->pid),
-						'sort' => (array_search($pageId, $this->pageList) !== FALSE ? array_search($pageId, $this->pageList) + 9000000 : $objPage->sorting)
+						'sort' => (array_search($pageId, $this->arrPageList) !== FALSE ? array_search($pageId, $this->arrPageList) + 9000000 : $objPage->sorting)
 					);
 				}
 				usort($this->arrPages, array($this, 'pageSort'));
@@ -163,56 +151,65 @@ class SiteExport extends Backend
 
 		$this->normalizePageLevels();
 
-
 		/**
-		 * Epub exportieren
+		 * generate Epub
 		 */
 		if ($this->Input->get('step') == 'epub')
 		{
-			$this->createEpub($objSiteExport);
+			$this->generateEpub($objSiteExport);
 			
-			if (file_exists(TL_ROOT.'/'.$this->targetDir . '/' . $objSiteExport->ebookFilename))
+			if (file_exists(TL_ROOT.'/'.$this->strTargetFolder . '/' . $objSiteExport->ebookFilename))
 			{
-				$html .= '<p>Epub <tt>'.$objSiteExport->ebookFilename.'</tt> erfolgreich erstellt.</p>';
+				$html .= '<p>'.sprintf($GLOBALS['TL_LANG']['MSC']['epubSuccessfullyCreated'], '<tt>'.$objSiteExport->ebookFilename.'</tt>').'</p>';
 			}
 			else
 			{
-				$html .= '<p color="red">Fehler beim Erstellen von <tt>'.$objSiteExport->ebookFilename.'</tt> aufgetreten!</p>';
+				$html .= '<p color="red">'.sprintf($GLOBALS['TL_LANG']['MSC']['epubCreateError'], '<tt>'.$objSiteExport->ebookFilename.'</tt>').'</p>';
 			}
-
-#			$html .= '<pre>'.htmlspecialchars(file_get_contents($this->targetDir.'/toc.ncx')).'</pre>';
 		}
 		elseif (count($this->arrPages))
 		{
-			if ($this->Input->get('step') == 'go')
+			// Get the site export rules
+			if ($objSiteExport->rulesFrom > 0)
 			{
-				// Get the site export data
+				$objExportRules = $this->Database->prepare("SELECT * FROM tl_site_export_rules WHERE (pid=? OR pid=?) AND isActive='1' ORDER BY `sorting`")
+					->execute($dc->id, $objSiteExport->rulesFrom);
+			}
+			else
+			{
 				$objExportRules = $this->Database->prepare("SELECT * FROM tl_site_export_rules WHERE pid=? AND isActive='1' ORDER BY `sorting`")
 					->execute($dc->id);
+			}
 
-				if ($objExportRules->numRows > 0)
-				{
-					$this->exportRules = $objExportRules->fetchAllAssoc();
-				}
-
+			if ($objExportRules->numRows > 0)
+			{
+				$this->exportRules = $objExportRules->fetchAllAssoc();
+			}
+			
+			if ($this->Input->get('step') == 'go')
+			{
 				if ($objSiteExport->toc != 'none')
 				{
-					$toc = '<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Inhaltsverzeichnis '.$objSiteExport->title.'</title><meta charset="utf-8"></head><body><h1>Inhaltsverzeichnis '.$objSiteExport->title.'</h1><ul>';
-					$toc = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1 //EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
+					$toc = '<head>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-	<title>Inhaltsverzeichnis '.$objSiteExport->title.'</title>
+	<title>'.$GLOBALS['TL_LANG']['MSC']['tableOfContents'].' '.$objSiteExport->title.'</title>
 </head>
-<body>
-	<h1>Inhalt</h1>
+<body class="toc">
+	<h1>'.$GLOBALS['TL_LANG']['MSC']['se_content'].'</h1>
+	<div id="toc">
 	<ul>';
 				}
+			}
+			elseif ($objExportRules->numRows > 0)
+			{
+				$html .= '<p><strong>'.sprintf($GLOBALS['TL_LANG']['MSC']['numberOfRules'], $objExportRules->numRows).'</strong></p>';
 			}
 
 
 			$lastLevel = 0;
 			$html .= '<ul class="site_export_tree">';
+			
+			$arrFlatToc = array();
 
 			foreach ($this->arrPages as $index => $page)
 			{
@@ -241,10 +238,12 @@ class SiteExport extends Backend
 				}
 				
 				$lastLevel = $page['level'];
-
+				
 				if ($this->Input->get('step') == 'go')
-				{				
-					$file = new File($this->targetDir . '/' . $page['filename']);
+				{
+					$arrFlatToc[] = $page['filename'];
+
+					$file = new File($this->strTargetFolder . '/' . $page['filename']);
 /*
 					// Fix, because Contao needs the page in global $objPage
 					$objPage = $page['obj'];
@@ -284,11 +283,11 @@ class SiteExport extends Backend
 		
 						$file->write($output);
 						
-						$html .= '<li>Export … ' . $page['filename'] . ' (' . strlen($output) . ' byte)';
+						$html .= '<li>'.sprintf($GLOBALS['TL_LANG']['MSC']['exportFileCompleted'], $page['filename'], strlen($output));
 					}
 					else
 					{
-						$html .= '<li>Export … ' . $page['filename'] . ' – ERROR –';
+						$html .= '<li>'.sprintf($GLOBALS['TL_LANG']['MSC']['exportFileFailed'], $page['filename']);
 					}
 					
 					$file->close();
@@ -305,28 +304,41 @@ class SiteExport extends Backend
 			}
 			
 			$html .= str_pad('</li></ul>', 10*$lastLevel, '</li></ul>');
-			
+
 			if ($objSiteExport->toc != 'none')
 			{
 				$toc .= str_pad('</li></ul>', 10*$lastLevel, '</li></ul>');
-				$toc .= '</li>'."\n".'</ul></body></html>';
+				$toc .= '</li>'."\n".'</ul></div></body></html>';
 			}
 
 			if ($this->Input->get('step') == 'go')
 			{
-				$file = new File($this->targetDir . '/toc.html');
+				$file = new File($this->strTargetFolder . '/toc.xhtml');
 
+				$file->write('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1 //EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+				<html xmlns="http://www.w3.org/1999/xhtml">');
+				$file->write($toc);
+				$file->close();
+				
+				$file = new File($this->strTargetFolder . '/toc.html');
+				
+				$file->write('<!doctype html><html lang="'.$GLOBALS['TL_LANGUAGE'].'">');
 				$file->write($toc);
 				$file->close();
 
-				$this->log('Export ID '.$dc->id.': '.count($this->arrPages).' pages saved', 'SiteExport', TL_FILES);
+				$file = new File($this->strTargetFolder . '/toc.txt');
+
+				$file->write(implode("\n", $arrFlatToc));
+				$file->close();
+
+				$this->log('Export ID '.$dc->id.': '.sprintf($GLOBALS['TL_LANG']['MSC']['pagesExported'], count($this->arrPages)), 'SiteExport', TL_FILES);
 			}
 			
 		}
 		else
 		{
-			$this->log('Export ID '.$dc->id.': No pages found!', 'SiteExport', TL_FILES);
-			return 'Export ID '.$dc->id.': No pages found!';
+			$this->log(sprintf($GLOBALS['TL_LANG']['MSC']['noPagesFound'], $dc->id), 'SiteExport', TL_FILES);
+			return printf($GLOBALS['TL_LANG']['MSC']['noPagesFound'], $dc->id);
 		}
 
 		$html .= '</li></ul></div>';
@@ -345,7 +357,7 @@ class SiteExport extends Backend
 			
 			$strJSON = '{"toc":['.$this->getJSON($pageList)."\n]}";
 			
-			$file = new File($this->targetDir . '/toc.json');
+			$file = new File($this->strTargetFolder . '/toc.json');
 			
 			$file->write($strJSON);
 			$file->close();
@@ -354,8 +366,57 @@ class SiteExport extends Backend
 		return $html;
 	}
 
+/* not used at the time
+	protected function generatePdf($objSiteExport)
+	{
+		// Include library
+		require_once(TL_ROOT . '/system/config/tcpdf.php');
+		require_once(TL_ROOT . '/plugins/tcpdf/tcpdf.php');
 
-	protected function createEpub($objSiteExport)
+		$pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+		
+		// set document information
+		$pdf->SetCreator(PDF_CREATOR);
+		$pdf->SetAuthor('Mario Müller');
+		$pdf->SetTitle($objSiteExport->pdfTitle);
+		
+		// Prevent font subsetting (huge speed improvement)
+		$pdf->setFontSubsetting(false);
+
+		// Remove default header/footer
+		$pdf->setPrintHeader(false);
+		$pdf->setPrintFooter(false);
+
+		// Set margins
+		$pdf->SetMargins(PDF_MARGIN_LEFT, PDF_MARGIN_TOP, PDF_MARGIN_RIGHT);
+
+		// Set auto page breaks
+		$pdf->SetAutoPageBreak(true, PDF_MARGIN_BOTTOM);
+		
+		// Set font
+		$pdf->SetFont(PDF_FONT_NAME_MAIN, '', PDF_FONT_SIZE_MAIN);
+
+		// Set image scale factor
+		$pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
+
+		for ($i=0; $i<count($this->arrPages); $i++)
+		{
+			$pdf->AddPage();
+			
+			$fileContent = file_get_contents(TL_ROOT.'/'.$this->strTargetFolder.'/'.$this->arrPages[$i]['filename']);
+
+			$fileContent = str_replace('"./', '"'.TL_ROOT.'/'.$this->strTargetFolder.'/', $fileContent);
+			
+			$pdf->writeHTML($fileContent, true, false, true, false, '');
+		}
+		
+		$pdf->lastPage();
+		
+		$pdf->Output(TL_ROOT.'/'.$this->strTargetFolder.'/'.$objSiteExport->pdfFilename, 'I');
+	}
+*/
+
+	protected function generateEpub($objSiteExport)
 	{
 		$toc = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE ncx PUBLIC "-//NISO//DTD ncx 2005-1//EN" "http://www.daisy.org/z3986/2005/ncx-2005-1.dtd">
@@ -417,7 +478,7 @@ class SiteExport extends Backend
 
 			$epubCoverFile = basename($objSiteExport->ebookCover);
 
-			$file->copyTo($this->targetDir.'/images/'.$epubCoverFile);
+			$file->copyTo($this->strTargetFolder.'/images/'.$epubCoverFile);
 
 			$content .= '		<meta name="cover" content="'.$epubCoverFile.'"/>';
 		}
@@ -432,15 +493,15 @@ class SiteExport extends Backend
 		<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
 ';
 
-		foreach ($this->getFiles($this->targetDir.'/images', array('.jpg', '.jpeg')) as $file)
+		foreach ($this->getFiles($this->strTargetFolder.'/images', array('.jpg', '.jpeg')) as $file)
 		{
 			$content .= "\t\t".'<item id="'.$file.'" href="images/'.$file.'" media-type="image/jpeg"/>'."\n";
 		}
-		foreach ($this->getFiles($this->targetDir.'/images', array('.png')) as $file)
+		foreach ($this->getFiles($this->strTargetFolder.'/images', array('.png')) as $file)
 		{
 			$content .= "\t\t".'<item id="'.$file.'" href="images/'.$file.'" media-type="image/png"/>'."\n";
 		}
-		foreach ($this->getFiles($this->targetDir, array('.css')) as $file)
+		foreach ($this->getFiles($this->strTargetFolder, array('.css')) as $file)
 		{
 			$content .= "\t\t".'<item id="'.$file.'" href="'.$file.'" media-type="text/css"/>'."\n";
 		}
@@ -449,7 +510,7 @@ class SiteExport extends Backend
 		
 		if ($objSiteExport->toc != 'none')
 		{
-			$content .= "\t\t".'<item id="id_book_toc" href="toc.html" media-type="application/xhtml+xml"/>'."\n";
+			$content .= "\t\t".'<item id="id_book_toc" href="toc.xhtml" media-type="application/xhtml+xml"/>'."\n";
 			$spine .= "\t\t".'<itemref idref="id_book_toc"/>'."\n";
 		}
 		
@@ -468,10 +529,10 @@ class SiteExport extends Backend
 
 
 
-		$arrDataFiles = scandir(TL_ROOT.'/'.$this->targetDir);
-		$arrImageFiles = scandir(TL_ROOT.'/'.$this->targetDir.'/images');
+		$arrDataFiles = scandir(TL_ROOT.'/'.$this->strTargetFolder);
+		$arrImageFiles = scandir(TL_ROOT.'/'.$this->strTargetFolder.'/images');
 
-		$objArchive = new ZipWriter($this->targetDir.'/'.$objSiteExport->ebookFilename);
+		$objArchive = new ZipWriter($this->strTargetFolder.'/'.$objSiteExport->ebookFilename);
 
 		$objArchive->addString('application/epub+zip', 'mimetype');
 
@@ -490,9 +551,9 @@ class SiteExport extends Backend
 
 		foreach ($arrDataFiles as $strFile)
 		{
-			if (!is_dir(TL_ROOT.'/'.$this->targetDir.'/'.$strFile) && !in_array($strFile, array('.', '..')))
+			if (!is_dir(TL_ROOT.'/'.$this->strTargetFolder.'/'.$strFile) && !in_array($strFile, array('.', '..')))
 			{
-				$file = new File($this->targetDir.'/'.$strFile);
+				$file = new File($this->strTargetFolder.'/'.$strFile);
 
 				$objArchive->addString($file->getContent(), 'OEBPS/'.$strFile);
 				
@@ -502,9 +563,9 @@ class SiteExport extends Backend
 
 		foreach ($arrImageFiles as $strFile)
 		{
-			if (!is_dir(TL_ROOT.'/'.$this->targetDir.'/'.$strFile) && !in_array($strFile, array('.', '..')))
+			if (!is_dir(TL_ROOT.'/'.$this->strTargetFolder.'/'.$strFile) && !in_array($strFile, array('.', '..')))
 			{
-				$file = new File($this->targetDir.'/images/'.$strFile);
+				$file = new File($this->strTargetFolder.'/images/'.$strFile);
 
 				$objArchive->addString($file->getContent(), 'OEBPS/images/'.$strFile);
 				
@@ -512,21 +573,24 @@ class SiteExport extends Backend
 			}
 		}
 		
-		$files->rrdir($this->targetDir, true);
+		$files->rrdir($this->strTargetFolder, true);
 
 		$objArchive->close();
 
 		/**
 		 * zip epub file
 		 */
-##		chdir($this->targetDir);
+##		chdir($this->strTargetFolder);
 
-##		exec('cd '.$this->targetDir);
-##		exec($GLOBALS['SITEEXPORT']['ZIP']['BIN'].' -X0 "'.$this->targetDir.'/'.$objSiteExport->ebookFilename.'" mimetype ');
-##		exec($GLOBALS['SITEEXPORT']['ZIP']['BIN'].' -rDX9 "'.$this->targetDir.'/'.$objSiteExport->ebookFilename.'" * -x mimetype -x *.epub');
+##		exec('cd '.$this->strTargetFolder);
+##		exec($GLOBALS['SITEEXPORT']['ZIP']['BIN'].' -X0 "'.$this->strTargetFolder.'/'.$objSiteExport->ebookFilename.'" mimetype ');
+##		exec($GLOBALS['SITEEXPORT']['ZIP']['BIN'].' -rDX9 "'.$this->strTargetFolder.'/'.$objSiteExport->ebookFilename.'" * -x mimetype -x *.epub');
 	}
 
 
+	/**
+	 * create a JSON file with table of contents
+	 */
 	protected function getJSON($pageList)
 	{
 		$strData = "";
@@ -539,7 +603,6 @@ class SiteExport extends Backend
 
 			if (is_array($pageList[$i]['childs']))
 			{
-#die(var_export($pageList[$i]['childs'], true));
 				$strData .= ', "childs":'."\n".str_pad("\t", $pageList[$i]['level'], "\t")."[".$this->getJSON($pageList[$i]['childs'])."\n".str_pad("\t", $pageList[$i]['level'])."]";
 			}
 
@@ -553,6 +616,9 @@ class SiteExport extends Backend
 	}
 
 
+	/**
+	 * get nested page list
+	 */
 	protected function getPageList($flatList, $level = 0)
 	{
 		$pageList = array();
@@ -562,7 +628,6 @@ class SiteExport extends Backend
 			if ($flatList[$i]['level'] == $level)
 			{
 				$flatList[$i]['childs'] = false;
-#				$arrTest = array('title'=>$flatList[$i]['title'], 'childs'=>false);
 				$pageList[] = $flatList[$i];
 			}
 			elseif ($flatList[$i]['level'] > $level)
@@ -609,7 +674,7 @@ class SiteExport extends Backend
 			}
 			$level = $this->arrPages[$i]['level'];
 			
-			if ($this->epubExport)
+			if ($this->exportEpub)
 			{
 				$this->arrPages[$i]['navId'] = 'id_book_' . $i;
 			}
@@ -617,6 +682,9 @@ class SiteExport extends Backend
 	}
 
 
+	/**
+	 * retrieve the page level
+	 */
 	protected function getPageLevel($pid)
 	{
 		$level = 1;
@@ -641,8 +709,13 @@ class SiteExport extends Backend
 	}
 
 
-	protected function applyRules($str)
+	/**
+	 * apply all export rules
+	 */
+	protected function applyRules($strContent)
 	{
+		$strContent = preg_replace_callback('~(<a.*href=")(.*)(".*>)~isU', 'self::replaceLinks', $strContent);
+
 		foreach ($this->exportRules as $rule)
 		{
 			if ($rule['isRegex'] == '1')
@@ -654,70 +727,102 @@ class SiteExport extends Backend
 				$pattern .= ($rule['modUngreedy']   == '1' ? 'U' : '');
 				$pattern .= ($rule['modUTF8']       == '1' ? 'u' : '');
 				
-				$str = preg_replace($pattern, $rule['replacement'], $str);
+				$strTemp = preg_replace($pattern, $rule['replacement'], $strContent);
+				
+				if (preg_last_error() == PREG_NO_ERROR)
+				{
+				    $last_error = false;
+				}
+				else if (preg_last_error() == PREG_INTERNAL_ERROR)
+				{
+				    $last_error = 'PREG_INTERNAL_ERROR';
+				}
+				else if (preg_last_error() == PREG_BACKTRACK_LIMIT_ERROR)
+				{
+				    $last_error = 'PREG_BACKTRACK_LIMIT_ERROR';
+				}
+				else if (preg_last_error() == PREG_RECURSION_LIMIT_ERROR)
+				{
+				    $last_error = 'PREG_RECURSION_LIMIT_ERROR';
+				}
+				else if (preg_last_error() == PREG_BAD_UTF8_ERROR)
+				{
+				    $last_error = 'PREG_BAD_UTF8_ERROR';
+				}
+				else if (preg_last_error() == PREG_BAD_UTF8_ERROR)
+				{
+				    $last_error = 'PREG_BAD_UTF8_ERROR';
+				}
+				
+				if ($last_error !== false)
+				{
+					$this->log('Error: ' . $rule['title'] . ' → ' . $last_error, 'SiteExport', TL_ERROR);
+				}
+				else
+				{
+					$strContent = $strTemp;
+				}
 
 #				$this->log($pattern . ' → ' . $rule['replacement'], 'SiteExport', TL_ERROR);
 			}
 			else
 			{
-				$str = str_replace($rule['pattern'], $rule['replacement'], $str);
+				$strContent = str_replace($rule['pattern'], $rule['replacement'], $strContent);
 			}
 		}
 		
-		$str = str_ireplace(
+		$strContent = str_ireplace(
 			array('&nbsp;'),
 			array(' '),
-			$str
+			$strContent
 		);
 
-		$str = preg_replace_callback('~(<a.*href=")(.*)(".*>)~isU', 'self::replaceLinks', $str);
-
-		if (!is_writeable(TL_ROOT.'/'.$this->targetDir) && is_dir(TL_ROOT.'/'.$this->targetDir))
+		if (!is_writeable(TL_ROOT.'/'.$this->strTargetFolder) && is_dir(TL_ROOT.'/'.$this->strTargetFolder))
 		{
-			chmod(TL_ROOT.'/'.$this->targetDir, 0777);
+			chmod(TL_ROOT.'/'.$this->strTargetFolder, 0777);
 		}
 
 		/* copy images files */		
-		if (!is_dir(TL_ROOT.'/'.$this->targetDir . '/images'))
+		if (!is_dir(TL_ROOT.'/'.$this->strTargetFolder . '/images'))
 		{
-			mkdir(TL_ROOT.'/'.$this->targetDir . '/images');
+			mkdir(TL_ROOT.'/'.$this->strTargetFolder . '/images');
 
-			if (!is_writeable(TL_ROOT.'/'.$this->targetDir . '/images') && is_dir(TL_ROOT.'/'.$this->targetDir . '/images'))
+			if (!is_writeable(TL_ROOT.'/'.$this->strTargetFolder . '/images') && is_dir(TL_ROOT.'/'.$this->strTargetFolder . '/images'))
 			{
-				chmod(TL_ROOT.'/'.$this->targetDir . '/images', 0777);
+				chmod(TL_ROOT.'/'.$this->strTargetFolder . '/images', 0777);
 			}
 		}
 
-		if (is_writeable(TL_ROOT.'/'.$this->targetDir . '/images') && is_dir(TL_ROOT.'/'.$this->targetDir . '/images'))
+		if (is_writeable(TL_ROOT.'/'.$this->strTargetFolder . '/images') && is_dir(TL_ROOT.'/'.$this->strTargetFolder . '/images'))
 		{
-			$str = preg_replace_callback('~(<img.*src=")(.*(png|jpg|gif))(")~isU', 'self::processImages', $str);
+			$strContent = preg_replace_callback('~(<img.*src=")(.*(png|jpg|gif))(")~isU', 'self::processImages', $strContent);
 		}
 
 		/* copy audio files */
-		if (!is_dir(TL_ROOT.'/'.$this->targetDir . '/audio'))
+		if (!is_dir(TL_ROOT.'/'.$this->strTargetFolder . '/audio'))
 		{
-			mkdir(TL_ROOT.'/'.$this->targetDir . '/audio');
+			mkdir(TL_ROOT.'/'.$this->strTargetFolder . '/audio');
 
-			if (!is_writeable(TL_ROOT.'/'.$this->targetDir . '/audio') && is_dir(TL_ROOT.'/'.$this->targetDir . '/audio'))
+			if (!is_writeable(TL_ROOT.'/'.$this->strTargetFolder . '/audio') && is_dir(TL_ROOT.'/'.$this->strTargetFolder . '/audio'))
 			{
-				chmod(TL_ROOT.'/'.$this->targetDir . '/audio', 0777);
+				chmod(TL_ROOT.'/'.$this->strTargetFolder . '/audio', 0777);
 			}
 		}
 
-		if (is_writeable(TL_ROOT.'/'.$this->targetDir . '/audio') && is_dir(TL_ROOT.'/'.$this->targetDir . '/audio'))
+		if (is_writeable(TL_ROOT.'/'.$this->strTargetFolder . '/audio') && is_dir(TL_ROOT.'/'.$this->strTargetFolder . '/audio'))
 		{
-			$str = preg_replace_callback('~(<source.*src=")(.*(mp3|ogg))(")~isU', 'self::processAudio', $str);
+			$strContent = preg_replace_callback('~(<source.*src=")(.*(mp3|ogg))(")~isU', 'self::processAudio', $strContent);
 		}
 
 		/* copy stylesheets */
-		$str = preg_replace_callback('~(<link.*href=")(.*)(".*>)~isU', 'self::processStylesheets', $str);
+		$strContent = preg_replace_callback('~(<link.*href=")(.*)(".*>)~isU', 'self::processStylesheets', $strContent);
 
-		if ($this->epubExport)
+		if ($this->exportEpub)
 		{
 #			$str = str_ireplace('</head>', )
 		}
 
-		return $str;
+		return $strContent;
 	}
 
 
@@ -747,7 +852,7 @@ class SiteExport extends Backend
 		{
 			$src_image = $match[2];
 			$filename = 'images/' . str_replace(array('/', ' '), '_', $match[2]);
-			$dest_image = $this->targetDir . '/' . $filename;
+			$dest_image = $this->strTargetFolder . '/' . $filename;
 			
 			$this->import('Files');
 
@@ -761,7 +866,7 @@ class SiteExport extends Backend
 			
 			if (file_exists(TL_ROOT.'/'.$strRetinaFilename))
 			{
-				$this->Files->copy($strRetinaFilename, $this->targetDir.'/images/'.str_replace(array('/', ' '), '_', $strRetinaFilename));
+				$this->Files->copy($strRetinaFilename, $this->strTargetFolder.'/images/'.str_replace(array('/', ' '), '_', $strRetinaFilename));
 			}
 
 			return $match[1].'./'.$filename.$match[4];
@@ -772,7 +877,7 @@ class SiteExport extends Backend
 		{
 			$src_audio = $match[2];
 			$filename = 'audio/' . str_replace(array('/', ' '), '_', $src_audio);
-			$dest_audio = $this->targetDir . '/' . $filename;
+			$dest_audio = $this->strTargetFolder . '/' . $filename;
 
 			$this->import('Files');
 
@@ -784,6 +889,7 @@ class SiteExport extends Backend
 			return $match[1].'./'.$filename.$match[4];
 		}
 
+
 		protected function processStylesheets($match)
 		{
 			if (stristr($match[1], 'rel="static-stylesheet"') !== FALSE)
@@ -794,7 +900,7 @@ class SiteExport extends Backend
 			{
 				$src_stylesheet = TL_ROOT.'/'.$match[2];
 				$filename = str_replace(array('/', ' '), '_', $match[2]);
-				$dest_stylesheet = TL_ROOT.'/'.$this->targetDir . '/' . $filename;
+				$dest_stylesheet = TL_ROOT.'/'.$this->strTargetFolder . '/' . $filename;
 	
 				if (file_exists($src_stylesheet) && !file_exists($dest_stylesheet))
 				{
@@ -837,6 +943,9 @@ class SiteExport extends Backend
 	}
 
 
+	/**
+	 * delete all files in target folder
+	 */
 	protected function deleteFiles($path, $test=false)
 	{
 		$fileCount = 0;
@@ -885,7 +994,7 @@ class SiteExport extends Backend
 					}
 				}
 			}
-	
+
 			closedir($handle);
 		}
 		
@@ -916,17 +1025,41 @@ class SiteExport extends Backend
 	}
 	
 	
-	/**
-	 * Helper function for usort
-	 */
-	protected function pageSort($a, $b)
-	{
-		if ($a['sort'] == $b['sort']) {
-		    return 0;
+		/**
+		 * Helper function for usort
+		 */
+		protected function pageSort($a, $b)
+		{
+			if ($a['sort'] == $b['sort']) {
+			    return 0;
+			}
+			return ($a['sort'] < $b['sort']) ? -1 : 1;
 		}
-		return ($a['sort'] < $b['sort']) ? -1 : 1;
+
+
+	/**
+	 * get the target folder for export files
+	 */
+	protected function getTargetFolder($objSiteExport)
+	{
+		if (version_compare(VERSION, '3', '>='))
+		{
+			$objFolder = \FilesModel::findByPk($objSiteExport->targetDir);
+			$strFolder = $objFolder->path;
+		}
+		else
+		{
+			$strFolder = $objSiteExport->targetDir;
+		}
+
+		if (!is_writeable(TL_ROOT.'/'.$strFolder) || !is_dir(TL_ROOT.'/'.$strFolder))
+		{
+			$this->log(sprintf($GLOBALS['TL_LANG']['MSC']['exportDirectoryError'], $strFolder), 'SiteExport', TL_ERROR);
+			return false;
+		}
+		
+		return $strFolder;
 	}
-	
 }
 
 /*

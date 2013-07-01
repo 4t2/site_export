@@ -16,7 +16,7 @@ $GLOBALS['TL_DCA']['tl_site_export_rules'] = array
 		'enableVersioning'            => true,
 		'onload_callback' => array
 		(
-#			array('tl_site_export', 'checkPermission')
+			array('tl_site_export_rules', 'loadRulesCallback')
 		)
 	),
 
@@ -29,6 +29,7 @@ $GLOBALS['TL_DCA']['tl_site_export_rules'] = array
 			'fields'                  => array('sorting', 'id'),
 			'panelLayout'             => 'filter;sort,search,limit',
 			'headerFields'            => array('title', 'tstamp'),
+			'header_callback'         => array('tl_site_export_rules', 'renderHeader'),
 			'child_record_callback'   => array('tl_site_export_rules', 'listExportRules')
 		),
 		'global_operations' => array
@@ -39,7 +40,18 @@ $GLOBALS['TL_DCA']['tl_site_export_rules'] = array
 				'href'                => 'act=select',
 				'class'               => 'header_edit_all',
 				'attributes'          => 'onclick="Backend.getScrollOffset();" accesskey="e"'
+#				'button_callback'     => array('tl_site_export_rules', 'headerButtons')
+			),
+			'export' => array
+			(
+				'label'               => &$GLOBALS['TL_LANG']['tl_site_export']['export'],
+				'href'                => 'key=export&amp;step=preview',
+				'class'               => 'header_start_export'
 			)
+		),
+		'label' => array
+		(
+			#'group_callback' 	=> array('tl_site_export_rules', 'groupCallback')
 		),
 		'operations' => array
 		(
@@ -224,6 +236,74 @@ class tl_site_export_rules extends Backend
 		$this->redirect('contao/main.php?act=error');
 	}
 
+	public function headerButtons($row, $href, $label, $title, $icon, $attributes)
+	{
+#die('<pre>'.var_export($label, true));
+	}
+
+	public function renderHeader($header, $dc)
+	{
+		$objSiteExport = $this->Database
+			->prepare('SELECT `title`,`rulesFrom` FROM `tl_site_export` WHERE id=?')
+			->limit(1)
+			->execute($dc->id);
+
+		if ($objSiteExport->rulesFrom > 0)
+		{
+			$objSiteExport = $this->Database
+				->prepare('SELECT `title`,`id` FROM `tl_site_export` WHERE id=?')
+				->limit(1)
+				->execute($objSiteExport->rulesFrom);
+
+			$objSiteExportRules = $this->Database
+				->prepare('SELECT count(*) AS `count` FROM `tl_site_export_rules` WHERE `pid`=?')
+				->execute($objSiteExport->id);
+
+			$header[sprintf($GLOBALS['TL_LANG']['MSC']['rulesFrom'], $objSiteExportRules->count)] = '<a href="contao/main.php?do=site_export&table=tl_site_export_rules&id=' . $objSiteExport->id . '">' . $objSiteExport->title . '</a>';
+		}
+		
+		return $header;
+	}
+
+	public function groupCallback($group, $sortingMode, $firstOrderBy, $row, $dc)
+	{
+#die('<pre>'.var_export($group, true));
+	}
+
+	public function loadRulesCallback($dc)
+	{
+		$arrRoot = array();
+		$objSiteExport = $this->Database
+			->prepare('SELECT `rulesFrom` FROM `tl_site_export` WHERE `id`=?')
+			->limit(1)
+			->execute($dc->id);
+
+#die('<pre>'.var_export($objSiteExport, true));
+
+		if ($objSiteExport->rulesFrom > 0)
+		{
+			$objSiteExportRules = $this->Database
+				->prepare('SELECT `id` FROM `tl_site_export_rules` WHERE `pid` IN (?,?)')
+				->execute($dc->id, $objSiteExport->rulesFrom);
+		}
+		else
+		{
+			$objSiteExportRules = $this->Database
+				->prepare('SELECT `id` FROM `tl_site_export_rules` WHERE `pid`=?')
+				->execute($dc->id);
+		}
+
+		while ($objSiteExportRules->next())
+		{
+			$arrRoot[] = $objSiteExportRules->id;
+		}
+#die('<pre>'.var_export($dc, true));
+#die('<pre>'.var_export($arrRoot, true));
+		
+		$GLOBALS['TL_DCA']['tl_site_export_rules']['list']['sorting']['root'] = $arrRoot;
+
+#die('<pre>'.var_export($GLOBALS['TL_DCA']['tl_site_export_rules']['list']['sorting']['root'], true));
+	}
 
 	/**
 	 * Return the "toggle active" button

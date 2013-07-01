@@ -12,3 +12,21 @@ ul.site_export_tree li ul
 	margin-left: 20px;
 	padding-left: 0;
 }
+
+.button_html
+{
+	font-weight: bold;
+	color: #ad4e4e;
+}
+.button_html span
+{
+	padding-left: 24px;
+	background: url('system/modules/site_export/assets/images/html.png') no-repeat scroll left center;
+	overflow: visible;
+}
+a.header_start_export
+{
+	padding-left: 20px;
+	background: url('system/modules/site_export/assets/images/html_go.png') no-repeat scroll left center;
+	overflow: visible;
+}
