@@ -78,7 +78,7 @@ $GLOBALS['TL_DCA']['tl_site_export'] = array
 	'palettes' => array
 	(
 		'__selector__'                => array('includeLayout', 'exportEpub'),
-		'default'                     => '{title_legend},title;{page_legend},pages,recursive;{export_legend},targetDir,includeLayout,toc,rulesFrom;{epub_legend},exportEpub'
+		'default'                     => '{title_legend},title;{page_legend},pages,recursive;{export_legend},targetDir,includeLayout,toc,tocHeadline,rulesFrom;{epub_legend},exportEpub'
 	),
 
 	// Subpalettes
@@ -88,7 +88,7 @@ $GLOBALS['TL_DCA']['tl_site_export'] = array
 #		'exportPdf'                   => 'pdfFilename,pdfCover,pdfTitle',
 		'exportEpub'                  => 'ebookFilename,ebookCover,ebookTitle,ebookDescription,ebookIdentifier,ebookSubject,ebookLanguage,ebookCreator,ebookPublisher,ebookDate'
 	),
-	
+
 	// Fields
 	'fields' => array
 	(
@@ -98,14 +98,21 @@ $GLOBALS['TL_DCA']['tl_site_export'] = array
 			'search'                  => true,
 			'exclude'                 => true,
 			'inputType'               => 'text',
-			'eval'                    => array('mandatory'=>true, 'decodeEntities'=>true, 'maxlength'=>255)
+			'eval'                    => array
+			(
+				'mandatory'				=> true,
+				'decodeEntities'		=> true,
+				'maxlength'				=> 255,
+				'tl_class'				=> 'long'
+			)
 		),
 		'pages' => array
 		(
 			'label'                   => &$GLOBALS['TL_LANG']['tl_site_export']['pages'],
 			'exclude'                 => true,
 			'inputType'               => 'pageTree',
-			'eval'                    => array(
+			'eval'                    => array
+			(
 				'mandatory' => false,
 				'multiple' => true,
 				'fieldType'=>'checkbox'
@@ -123,7 +130,10 @@ $GLOBALS['TL_DCA']['tl_site_export'] = array
 			'label'                   => &$GLOBALS['TL_LANG']['tl_site_export']['includeLayout'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
-			'eval'                    => array('submitOnChange'=>true)
+			'eval'                    => array
+			(
+				'submitOnChange'		=>true
+			)
 		),
 		'layout' => array
 		(
@@ -144,6 +154,18 @@ $GLOBALS['TL_DCA']['tl_site_export'] = array
 			(
 				'maxlength'				=> 32,
 				'tl_class'				=> 'w50 clr'
+			)
+		),
+		'tocHeadline' => array
+		(
+			'label'                   => &$GLOBALS['TL_LANG']['tl_site_export']['tocHeadline'],
+			'exclude'                 => true,
+			'search'                  => true,
+			'inputType'               => 'inputUnit',
+			'options'                 => array('h1', 'h2', 'h3', 'h4', 'h5', 'h6'),
+			'eval'                    => array(
+				'maxlength'				=> 200,
+				'tl_class'				=> 'w50'
 			)
 		),
 		'rulesFrom' => array
@@ -278,10 +300,15 @@ class tl_site_export extends Backend
 		$objSiteExport = $this->Database->prepare("SELECT `id`, `title` FROM `tl_site_export` WHERE `id`<>?")->execute($dc->activeRecord->id);
 
 		$arrSiteExport = array();
+
 		while ($objSiteExport->next())
 		{
-#die('<pre>'.var_export($objSiteExport, true));
-			$arrSiteExport[$objSiteExport->id] = $objSiteExport->title . ' (ID '.$objSiteExport->id.')';
+			$objSiteExportRules = $this->Database->prepare("SELECT COUNT(*) AS `count` FROM `tl_site_export_rules` WHERE `pid`=? AND isActive='1'")->execute($objSiteExport->id);
+			
+			if ($objSiteExportRules->count > 0)
+			{
+				$arrSiteExport[$objSiteExport->id] = $objSiteExport->title . ' ('.$objSiteExportRules->count.')';
+			}
 		}
 #die('<pre>'.var_export($arrSiteExport, true));
 		return $arrSiteExport;

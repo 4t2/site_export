@@ -27,6 +27,7 @@ $GLOBALS['TL_LANG']['tl_site_export']['toc']['reference'] = array(
 	'json' => 'eingerücktes Inhaltsverzeichnis + JSON',
 	'flat_json' => 'flaches Inhaltsverzeichnis + JSON'
 );
+$GLOBALS['TL_LANG']['tl_site_export']['tocHeadline'] = array('Überschrift Inhaltsverzeichnis', 'Überschrift des Inhaltsverzeichnis');
 $GLOBALS['TL_LANG']['tl_site_export']['targetDir'] = array('Exportverzeichnis', 'Bitte wählen Sie einen Ordner aus der Dateiübersicht.');
 
 $GLOBALS['TL_LANG']['tl_site_export']['exportEpub'] = array('Epub erstellen', 'Ein E-Book im Format Epub erstellen.');

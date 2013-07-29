@@ -16,7 +16,7 @@ $GLOBALS['TL_DCA']['tl_site_export_rules'] = array
 		'enableVersioning'            => true,
 		'onload_callback' => array
 		(
-			array('tl_site_export_rules', 'loadRulesCallback')
+//			array('tl_site_export_rules', 'loadRulesCallback')
 		)
 	),
 

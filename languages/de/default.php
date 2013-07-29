@@ -10,7 +10,6 @@
 
 
 $GLOBALS['TL_LANG']['MSC']['tableOfContents']           = 'Inhaltsverzeichnis';
-$GLOBALS['TL_LANG']['MSC']['se_content']                = 'Inhalt';
 $GLOBALS['TL_LANG']['MSC']['epubSuccessfullyCreated']   = 'Epub %s erfolgreich erstellt';
 $GLOBALS['TL_LANG']['MSC']['epubCreateError'] 			= 'Fehler beim Erstellen von %s aufgetreten!';
 $GLOBALS['TL_LANG']['MSC']['previewPagesToExport']      = 'Vorschau der zu exportierenden Seiten';

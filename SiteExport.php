@@ -190,12 +190,16 @@ class SiteExport extends Backend
 			{
 				if ($objSiteExport->toc != 'none')
 				{
+					$arrHeadline = deserialize($objSiteExport->tocHeadline);
+					$tocHeadline = is_array($arrHeadline) ? $arrHeadline['value'] : $arrHeadline;
+					$tocHl = is_array($arrHeadline) ? $arrHeadline['unit'] : 'h1';
+
 					$toc = '<head>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-	<title>'.$GLOBALS['TL_LANG']['MSC']['tableOfContents'].' '.$objSiteExport->title.'</title>
+	<title>'.$tocHeadline.' '.$objSiteExport->title.'</title>
 </head>
 <body class="toc">
-	<h1>'.$GLOBALS['TL_LANG']['MSC']['se_content'].'</h1>
+	<'.$tocHl.'>'.$tocHeadline.'</'.$tocHl.'>
 	<div id="toc">
 	<ul>';
 				}
@@ -726,7 +730,7 @@ class SiteExport extends Backend
 				$pattern .= ($rule['modDotAll']     == '1' ? 's' : '');
 				$pattern .= ($rule['modUngreedy']   == '1' ? 'U' : '');
 				$pattern .= ($rule['modUTF8']       == '1' ? 'u' : '');
-				
+
 				$strTemp = preg_replace($pattern, $rule['replacement'], $strContent);
 				
 				if (preg_last_error() == PREG_NO_ERROR)
@@ -930,7 +934,7 @@ class SiteExport extends Backend
 		$files = array();
 
 		$handle = opendir(TL_ROOT.'/'.$path);
-	
+
 		while ($tmp = readdir($handle))
 		{
 			if (($tmp!='.') && ($tmp!='..') && (!$extensions || in_array(strrchr($tmp, '.'), $extensions)))

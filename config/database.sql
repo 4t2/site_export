@@ -14,6 +14,7 @@ CREATE TABLE `tl_site_export` (
   `layout` int(10) unsigned NOT NULL default '0',
   `rulesFrom` int(10) unsigned NOT NULL default '0',
   `toc` varchar(32) NOT NULL default '',
+  `tocHeadline` varchar(255) NOT NULL default 'a:2:{s:4:"unit";s:2:"h1";s:5:"value";s:6:"Inhalt";}',
   `exportEpub` char(1) NOT NULL default '',
   `ebookFilename` varchar(255) NOT NULL default 'book.epub',
   `ebookCover` varchar(255) NOT NULL default '',
