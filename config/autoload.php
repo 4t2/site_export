@@ -19,4 +19,5 @@ ClassLoader::addClasses(array
 #	'FrontendHook' 		=> 'system/modules/site_export/FrontendHook.php',
 	'SiteExportHooks' 	=> 'system/modules/site_export/SiteExportHooks.php',
 	'SiteExport'      	=> 'system/modules/site_export/SiteExport.php',
+	'MyZipWriter'      	=> 'system/modules/site_export/MyZipWriter.php'
 ));
