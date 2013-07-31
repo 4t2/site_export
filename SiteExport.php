@@ -57,7 +57,8 @@ class SiteExport extends Backend
 		elseif ($this->Input->get('step') == 'go')
 		{
 			$files = Files::getInstance();
-			$files->rrdir($this->strTargetFolder);
+
+			$files->rrdir($this->strTargetFolder, true);
 
 			if ($this->exportEpub)
 			{
@@ -79,7 +80,7 @@ class SiteExport extends Backend
 		{
 			$html .= '<div style="float:left; padding-left: 10px;"><div style="padding-top: 6px;">'.$GLOBALS['TL_LANG']['MSC']['generateEpub'].'</div></div>';
 			$html .= '<div style="float:right; padding-right: 4px;"><form method="get" class="popup info" id="site_export" action="' . $objSiteExport->targetDir.'/'.$objSiteExport->ebookFilename.'"><div class="tl_formbody">';
-			$html = sprintf('<input type="submit" value="%s" title="%s" class="tl_submit"></div></form></div>', $GLOBALS['TL_LANG']['MSC']['epubDownload'], $GLOBALS['TL_LANG']['MSC']['epubDownloadTitle'] );
+			$html .= sprintf('<input type="submit" value="%s" title="%s" class="tl_submit"></div></form></div>', $GLOBALS['TL_LANG']['MSC']['epubDownload'], $GLOBALS['TL_LANG']['MSC']['epubDownloadTitle'] );
 			$html .= '<div class="clear"></div>';
 		}
 
@@ -209,7 +210,6 @@ class SiteExport extends Backend
 				$html .= '<p><strong>'.sprintf($GLOBALS['TL_LANG']['MSC']['numberOfRules'], $objExportRules->numRows).'</strong></p>';
 			}
 
-
 			$lastLevel = 0;
 			$html .= '<ul class="site_export_tree">';
 			
@@ -219,121 +219,94 @@ class SiteExport extends Backend
 			{
 				if ($page['level'] > $lastLevel)
 				{
-					$html .= str_pad('<ul>', 4*($page['level']-$lastLevel), '<ul>');
-
-					if (in_array($objSiteExport->toc, array('indent', 'json')))
-					{
-						$toc .= "\n".str_pad("\t", $page['level']+1, "\t").str_pad('<ul>', 4*($page['level']-$lastLevel), '<ul>');
-					}
+					$strLine = '<ul>';
 				}
 				elseif ($page['level'] < $lastLevel)
 				{
-					$html .= str_pad('</li></ul>', 10*($lastLevel-$page['level']), '</li></ul>').'</li>';
-					
-					if (in_array($objSiteExport->toc, array('indent', 'json')))
-					{
-						$toc .= "\n".str_pad('</li></ul>', 10*($lastLevel-$page['level']), '</li></ul>').'</li>';
-					}
+					$strLine = str_pad('</li></ul>', 10*($lastLevel-$page['level']), '</li></ul>').'</li>';
 				}
 				elseif ($index > 0)
 				{
-					$html .= '</li>';
-					$toc .= '</li>'."\n";
+					$strLine = '</li>';
 				}
+
+				$html .= $strLine;
 				
-				$lastLevel = $page['level'];
-				
+				if (in_array($objSiteExport->toc, array('indent', 'json')))
+				{
+					$toc .= $strLine;
+				}
+				elseif ($index > 0 && $objSiteExport->toc == 'flat')
+				{
+					$toc .= '</li>';
+				}
+
 				if ($this->Input->get('step') == 'go')
 				{
 					$arrFlatToc[] = $page['filename'];
 
-					$file = new File($this->strTargetFolder . '/' . $page['filename']);
-/*
-					// Fix, because Contao needs the page in global $objPage
-					$objPage = $page['obj'];
-
-					$objHandler = new MyPageRegular();
-
-					$GLOBALS['TL_HOOKS']['parseTemplate'][] = array('SiteExportHooks', 'parseTemplate');
-
-					ob_start();
-					$objHandler->generate($objPage);	
-					$output = ob_get_clean();
-*/
-
-					if (function_exists(curl_init))
+					if (($fileSize = $this->writePage($page)) !== FALSE)
 					{
-						$ch = curl_init();
-	
-						curl_setopt($ch, CURLOPT_URL, $page['exportUrl']);
-						curl_setopt($ch, CURLOPT_REFERER, $page['exportUrl']);
-						curl_setopt($ch, CURLOPT_USERAGENT, "SiteExport");
-						curl_setopt($ch, CURLOPT_HEADER, false);
-						curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-						curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-	
-						$output = curl_exec($ch);
-	
-						curl_close($ch);
-					}
-					else
-					{
-						$output = file_get_contents($page['exportUrl']);
-					}
-
-					if (!empty($output))
-					{
-						$output = $this->applyRules($output);
-		
-						$file->write($output);
-						
-						$html .= '<li>'.sprintf($GLOBALS['TL_LANG']['MSC']['exportFileCompleted'], $page['filename'], strlen($output));
+						$html .= '<li>'.sprintf($GLOBALS['TL_LANG']['MSC']['exportFileCompleted'], $page['filename'], $fileSize);
 					}
 					else
 					{
 						$html .= '<li>'.sprintf($GLOBALS['TL_LANG']['MSC']['exportFileFailed'], $page['filename']);
 					}
-					
-					$file->close();
 				}
 				else
 				{
-					$html .= '<li title="'.$page['url'].'">' . $page['filename'] .'';
+					$html .= '<li title="'.$page['url'].'">' . $page['filename'];
 				}
 				
 				if ($objSiteExport->toc != 'none')
 				{
 					$toc .= '<li><a href="'.$page['filename'].'">' . $page['title'] .'</a>';
 				}
+
+				$lastLevel = $page['level'];
 			}
 			
-			$html .= str_pad('</li></ul>', 10*$lastLevel, '</li></ul>');
+			$html .= str_pad('</li></ul>', 10*($lastLevel+1), '</li></ul>');
+
+			if (in_array($objSiteExport->toc, array('indent', 'json')))
+			{
+				$toc .= str_pad('</li></ul>', 10*($lastLevel+1), '</li></ul>');
+			}
+			elseif ($index > 0 && $objSiteExport->toc == 'flat')
+			{
+				$toc .= '</li></ul>';
+			}
 
 			if ($objSiteExport->toc != 'none')
 			{
-				$toc .= str_pad('</li></ul>', 10*$lastLevel, '</li></ul>');
-				$toc .= '</li>'."\n".'</ul></div></body></html>';
+				$toc .= "\n\t</div>\n</body>\n</html>";
 			}
 
 			if ($this->Input->get('step') == 'go')
 			{
 				$file = new File($this->strTargetFolder . '/toc.xhtml');
 
-				$file->write('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1 //EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
-				<html xmlns="http://www.w3.org/1999/xhtml">');
-				$file->write($toc);
-				$file->close();
-				
-				$file = new File($this->strTargetFolder . '/toc.html');
-				
-				$file->write('<!doctype html><html lang="'.$GLOBALS['TL_LANGUAGE'].'">');
+				$file->write('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+');
 				$file->write($toc);
 				$file->close();
 
-				$file = new File($this->strTargetFolder . '/toc.txt');
+				if (!$this->exportEpub)
+				{
+					$file = new File($this->strTargetFolder . '/toc.html');
 
-				$file->write(implode("\n", $arrFlatToc));
-				$file->close();
+					$file->write('<!doctype html><html lang="'.$GLOBALS['TL_LANGUAGE'].'">');
+					$file->write($toc);
+					$file->close();
+	
+					$file = new File($this->strTargetFolder . '/toc.txt');
+	
+					$file->write(implode("\n", $arrFlatToc));
+					$file->close();
+				}
 
 				$this->log('Export ID '.$dc->id.': '.sprintf($GLOBALS['TL_LANG']['MSC']['pagesExported'], count($this->arrPages)), 'SiteExport', TL_FILES);
 			}
@@ -360,9 +333,9 @@ class SiteExport extends Backend
 			}
 			
 			$strJSON = '{"toc":['.$this->getJSON($pageList)."\n]}";
-			
+
 			$file = new File($this->strTargetFolder . '/toc.json');
-			
+
 			$file->write($strJSON);
 			$file->close();
 		}
@@ -420,6 +393,47 @@ class SiteExport extends Backend
 	}
 */
 
+	protected function writePage($page)
+	{
+		if (function_exists(curl_init))
+		{
+			$ch = curl_init();
+
+			curl_setopt($ch, CURLOPT_URL, $page['exportUrl']);
+			curl_setopt($ch, CURLOPT_REFERER, $page['exportUrl']);
+			curl_setopt($ch, CURLOPT_USERAGENT, "SiteExport");
+			curl_setopt($ch, CURLOPT_HEADER, false);
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+			curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+
+			$output = curl_exec($ch);
+
+			curl_close($ch);
+		}
+		else
+		{
+			$output = file_get_contents($page['exportUrl']);
+		}
+
+		if (!empty($output))
+		{
+			$output = $this->applyRules($output);
+
+			$file = new File($this->strTargetFolder . '/' . $page['filename']);
+
+			$file->write($output);
+
+			$file->close();
+
+			return strlen($output);
+		}
+		else
+		{
+			return FALSE;
+		}
+	}
+
+
 	protected function generateEpub($objSiteExport)
 	{
 		$toc = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -447,7 +461,7 @@ class SiteExport extends Backend
 				$toc .= str_pad("\t", $this->arrPages[$i]['level']+1, "\t") . str_pad('</navPoint>', 11*($lastLevel-$this->arrPages[$i]['level']+1), '</navPoint>')."\n";
 			}
 
-			$toc .= str_pad("\t", $this->arrPages[$i]['level']+1, "\t") . '<navPoint playOrder="'.$i.'" id="'.$this->arrPages[$i]['navId'].'">'."\n";
+			$toc .= str_pad("\t", $this->arrPages[$i]['level']+1, "\t") . '<navPoint playOrder="'.($i+1).'" id="'.$this->arrPages[$i]['navId'].'">'."\n";
 			$toc .= str_pad("\t", $this->arrPages[$i]['level']+2, "\t") . '<navLabel><text>'.$this->arrPages[$i]['title'].'</text></navLabel>'."\n";
 			$toc .= str_pad("\t", $this->arrPages[$i]['level']+2, "\t") . '<content src="'.$this->arrPages[$i]['filename'].'"/>'."\n";
 
@@ -467,12 +481,12 @@ class SiteExport extends Backend
 	<metadata>
 		<meta name="generator" content="Contao :: Site Export"/>
 		<dc:title>'.$objSiteExport->ebookTitle.'</dc:title>
-		<dc:title>'.$objSiteExport->ebookDescription.'</dc:title>
+		<dc:description>'.$objSiteExport->ebookDescription.'</dc:description>
 		<dc:creator>'.$objSiteExport->ebookCreator.'</dc:creator>
 		<dc:publisher>'.$objSiteExport->ebookPublisher.'</dc:publisher>
 		<dc:date>'.$objSiteExport->ebookDate.'</dc:date>
 		<dc:language>'.$objSiteExport->ebookLanguage.'</dc:language>
-		<dc:identifier> id="'.$objSiteExport->ebookIdentifier.'">'.$objSiteExport->ebookIdentifier.'</dc:identifier>
+		<dc:identifier id="'.$objSiteExport->ebookIdentifier.'">'.$objSiteExport->ebookIdentifier.'</dc:identifier>
 		<dc:subject>'.$objSiteExport->ebookSubject.'</dc:subject>
 ';
 
@@ -496,22 +510,21 @@ class SiteExport extends Backend
 	<manifest>
 		<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
 ';
-
 		foreach ($this->getFiles($this->strTargetFolder.'/images', array('.jpg', '.jpeg')) as $file)
 		{
-			$content .= "\t\t".'<item id="'.$file.'" href="images/'.$file.'" media-type="image/jpeg"/>'."\n";
+			$content .= "\t\t".'<item id="'.str_replace('@', 'at', strstr($file, '.', true)).'" href="images/'.$file.'" media-type="image/jpeg"/>'."\n";
 		}
 		foreach ($this->getFiles($this->strTargetFolder.'/images', array('.png')) as $file)
 		{
-			$content .= "\t\t".'<item id="'.$file.'" href="images/'.$file.'" media-type="image/png"/>'."\n";
+			$content .= "\t\t".'<item id="'.strstr($file, '.', true).'" href="images/'.$file.'" media-type="image/png"/>'."\n";
 		}
 		foreach ($this->getFiles($this->strTargetFolder, array('.css')) as $file)
 		{
-			$content .= "\t\t".'<item id="'.$file.'" href="'.$file.'" media-type="text/css"/>'."\n";
+			$content .= "\t\t".'<item id="'.strstr($file, '.', true).'" href="'.$file.'" media-type="text/css"/>'."\n";
 		}
 
 		$spine = '	<spine toc="ncx">'."\n";
-		
+
 		if ($objSiteExport->toc != 'none')
 		{
 			$content .= "\t\t".'<item id="id_book_toc" href="toc.xhtml" media-type="application/xhtml+xml"/>'."\n";
@@ -523,7 +536,7 @@ class SiteExport extends Backend
 			$content .= "\t\t".'<item id="'.$this->arrPages[$i]['navId'].'" href="'.$this->arrPages[$i]['filename'].'" media-type="application/xhtml+xml"/>'."\n";
 			$spine .= "\t\t".'<itemref idref="'.$this->arrPages[$i]['navId'].'"/>'."\n";
 		}
-		
+
 		$spine .= '	</spine>
 ';
 
@@ -536,9 +549,11 @@ class SiteExport extends Backend
 		$arrDataFiles = scandir(TL_ROOT.'/'.$this->strTargetFolder);
 		$arrImageFiles = scandir(TL_ROOT.'/'.$this->strTargetFolder.'/images');
 
-		$objArchive = new ZipWriter($this->strTargetFolder.'/'.$objSiteExport->ebookFilename);
+#		$this->import('MyZipWriter');
 
-		$objArchive->addString('application/epub+zip', 'mimetype');
+		$objArchive = new \MyZipWriter($this->strTargetFolder.'/'.$objSiteExport->ebookFilename);
+
+		$objArchive->addStringUncompressed('application/epub+zip', 'mimetype');
 
 		$objArchive->addString('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 		<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
@@ -789,7 +804,10 @@ class SiteExport extends Backend
 		/* copy images files */		
 		if (!is_dir(TL_ROOT.'/'.$this->strTargetFolder . '/images'))
 		{
-			mkdir(TL_ROOT.'/'.$this->strTargetFolder . '/images');
+			if (!mkdir(TL_ROOT.'/'.$this->strTargetFolder . '/images'))
+			{
+				die(TL_ROOT.'/'.$this->strTargetFolder . '/images');
+			}
 
 			if (!is_writeable(TL_ROOT.'/'.$this->strTargetFolder . '/images') && is_dir(TL_ROOT.'/'.$this->strTargetFolder . '/images'))
 			{

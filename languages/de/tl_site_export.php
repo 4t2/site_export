@@ -7,7 +7,7 @@ $GLOBALS['TL_LANG']['tl_site_export']['title_legend'] = 'Export-Set';
 $GLOBALS['TL_LANG']['tl_site_export']['page_legend'] = 'Seitenauswahl';
 $GLOBALS['TL_LANG']['tl_site_export']['export_legend'] = 'Export-Einstellungen';
 $GLOBALS['TL_LANG']['tl_site_export']['pdf_legend'] = 'PDF-Einstellungen';
-$GLOBALS['TL_LANG']['tl_site_export']['epub_legend'] = 'Epub-Einstellungen';
+$GLOBALS['TL_LANG']['tl_site_export']['epub_legend'] = 'EPUB-Einstellungen';
 
 
 /**
@@ -30,12 +30,12 @@ $GLOBALS['TL_LANG']['tl_site_export']['toc']['reference'] = array(
 $GLOBALS['TL_LANG']['tl_site_export']['tocHeadline'] = array('Überschrift Inhaltsverzeichnis', 'Überschrift des Inhaltsverzeichnis');
 $GLOBALS['TL_LANG']['tl_site_export']['targetDir'] = array('Exportverzeichnis', 'Bitte wählen Sie einen Ordner aus der Dateiübersicht.');
 
-$GLOBALS['TL_LANG']['tl_site_export']['exportEpub'] = array('Epub erstellen', 'Ein E-Book im Format Epub erstellen.');
+$GLOBALS['TL_LANG']['tl_site_export']['exportEpub'] = array('EPUB erstellen', 'Ein E-Book im Format EPUB erstellen.');
 $GLOBALS['TL_LANG']['tl_site_export']['ebookCover'] = array('Cover-Bild festlegen', 'Ein Cover-Bild für das E-Book festlegen.');
 $GLOBALS['TL_LANG']['tl_site_export']['ebookFilename'] = array('Dateiname', 'Dateiname des Buchs ohne Pfad mit Endung: datei.epub');
 $GLOBALS['TL_LANG']['tl_site_export']['ebookTitle'] = array('Titel', 'Titel des Buchs.');
-$GLOBALS['TL_LANG']['tl_site_export']['ebookDescription'] = array('Beschreibung', 'Beschreibung des Buchs.');
-$GLOBALS['TL_LANG']['tl_site_export']['ebookIdentifier'] = array('Identifikator', 'Eindeutige ID des Buchs, z.B. die Webseite des Buchs.');
+$GLOBALS['TL_LANG']['tl_site_export']['ebookDescription'] = array('Beschreibung', 'Beschreibung des Buchs');
+$GLOBALS['TL_LANG']['tl_site_export']['ebookIdentifier'] = array('Identifikator', 'Eindeutige ID des Buchs');
 $GLOBALS['TL_LANG']['tl_site_export']['ebookSubject'] = array('Thema', 'Themen des Buchs, z.B. Non-fiction, tutorial');
 $GLOBALS['TL_LANG']['tl_site_export']['ebookLanguage'] = array('Sprache', 'Sprache des Buchs, z.B. de');
 $GLOBALS['TL_LANG']['tl_site_export']['ebookCreator'] = array('Autor', 'Autor des Buchs.');

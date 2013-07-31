@@ -231,7 +231,14 @@ $GLOBALS['TL_DCA']['tl_site_export'] = array
 			'search'                  => true,
 			'exclude'                 => true,
 			'inputType'               => 'text',
-			'eval'                    => array('mandatory'=>false, 'decodeEntities'=>true, 'maxlength'=>255, 'tl_class'=>'w50')
+			'eval'                    => array
+			(
+				'mandatory'			=> false,
+				'decodeEntities'	=> true,
+				'maxlength'			=> 255,
+				'rgxp'				=> 'alnum',
+				'tl_class'			=> 'w50'
+			)
 		),
 		'ebookSubject' => array
 		(

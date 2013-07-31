@@ -20,9 +20,9 @@ Im Export-Set definiert man das Export-Verzeichnis und wählt die zu exportieren
 EPUB
 ----
 
-Soll aus den exportieren Seiten ein Epub erzeugt werden, können dazu ein Cover-Bild und weitere notwendige Informationen wie bspw. Titel, Beschreibung, ID, Autor oder Sprache definiert werden.
+Soll aus den exportieren Seiten ein EPUB erzeugt werden, können dazu ein Cover-Bild und weitere notwendige Informationen wie bspw. Titel, Beschreibung, ID, Autor oder Sprache definiert werden.
 
-Wichtig ist, dass dazu auf jeden Fall ein extra Layout angelegt und eingebunden wird, welches der Epub-Definition entspricht.
+Wichtig ist, dass dazu auf jeden Fall ein extra Layout angelegt und eingebunden wird, welches der [EPUB-Definition](http://idpf.org/epub) entspricht.
 
 Ersetzungsregeln
 ----------------
