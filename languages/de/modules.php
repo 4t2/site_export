@@ -12,4 +12,5 @@
 /**
  * Back end modules
  */
-$GLOBALS['TL_LANG']['MOD']['site_export'] = array('Seiten-Export', 'Seiten exportieren');
+$GLOBALS['TL_LANG']['MOD']['batch'] = array('Stapelverarbeitung', 'Stapelverarbeitung');
+$GLOBALS['TL_LANG']['MOD']['site_export'] = array('Seiten exportieren', 'Seiten als HTML oder EPUB exportieren');

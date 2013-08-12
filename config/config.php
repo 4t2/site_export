@@ -4,12 +4,12 @@
 /**
  * Back end modules
  */
-$GLOBALS['BE_MOD']['system']['site_export'] = array
+$GLOBALS['BE_MOD']['batch']['site_export'] = array
 (
-		'tables'     => array('tl_site_export', 'tl_site_export_rules'),
-		'icon'       => 'system/modules/site_export/assets/images/html.png',
-		'export' => array('SiteExport', 'export'),
-		'stylesheet' => 'system/modules/site_export/assets/styles/site_export.css'
+		'tables'		=> array('tl_site_export', 'tl_site_export_rules'),
+		'icon'			=> 'system/modules/site_export/assets/images/html.png',
+		'export'		=> array('SiteExport', 'export'),
+		'stylesheet'	=> 'system/modules/site_export/assets/styles/site_export.css'
 );
 
 
