@@ -79,7 +79,7 @@ class SiteExport extends Backend
 		elseif ($this->Input->get('step') == 'epub')
 		{
 			$html .= '<div style="float:left; padding-left: 10px;"><div style="padding-top: 6px;">'.$GLOBALS['TL_LANG']['MSC']['generateEpub'].'</div></div>';
-			$html .= '<div style="float:right; padding-right: 4px;"><form method="get" class="popup info" id="site_export" action="' . $objSiteExport->targetDir.'/'.$objSiteExport->ebookFilename.'"><div class="tl_formbody">';
+			$html .= '<div style="float:right; padding-right: 4px;"><form method="get" class="popup info" id="site_export" action="'.$this->strTargetFolder.'/'.$objSiteExport->ebookFilename.'"><div class="tl_formbody">';
 			$html .= sprintf('<input type="submit" value="%s" title="%s" class="tl_submit"></div></form></div>', $GLOBALS['TL_LANG']['MSC']['epubDownload'], $GLOBALS['TL_LANG']['MSC']['epubDownloadTitle'] );
 			$html .= '<div class="clear"></div>';
 		}
@@ -113,11 +113,6 @@ class SiteExport extends Backend
 
 					$strDomain = $this->Environment->base;
 
-					if ($objPage->domain != '')
-					{
-						$strDomain = ($this->Environment->ssl ? 'https://' : 'http://') . $objPage->domain . TL_PATH . '/';
-					}
-
 					if ($GLOBALS['TL_CONFIG']['addLanguageToUrl'])
 					{
 						$strUrl = $this->generateFrontendUrl($objPage->row(), null, $objPage->rootLanguage);
@@ -125,6 +120,11 @@ class SiteExport extends Backend
 					else
 					{
 						$strUrl = $this->generateFrontendUrl($objPage->row());
+					}
+
+					if (version_compare(VERSION, '3.1', '<') && $objPage->domain != '')
+					{
+						$strUrl = ($this->Environment->ssl ? 'https://' : 'http://') . $objPage->domain . TL_PATH . '/' . $strUrl;
 					}
 
 					$this->arrFilename[$strUrl] = $strFilename;
@@ -138,9 +138,9 @@ class SiteExport extends Backend
 						'pid' => $objPage->pid,
 						'layout' => $pageLayout,
 						'obj' => $objPage,
-						'url' => $strDomain.$strUrl,
+						'url' => $strUrl,
 						'layout' => $pageLayout,
-						'exportUrl' => $strDomain.$strUrl.'?export=1'.($pageLayout ? '&layout='.$pageLayout : ''),
+						'exportUrl' => $strUrl.'?export=1'.($pageLayout ? '&layout='.$pageLayout : ''),
 						'filename' => $strFilename,
 						'level' => $this->getPageLevel($objPage->pid),
 						'sort' => (array_search($pageId, $this->arrPageList) !== FALSE ? array_search($pageId, $this->arrPageList) + 9000000 : $objPage->sorting)
@@ -310,12 +310,12 @@ class SiteExport extends Backend
 
 				$this->log('Export ID '.$dc->id.': '.sprintf($GLOBALS['TL_LANG']['MSC']['pagesExported'], count($this->arrPages)), 'SiteExport', TL_FILES);
 			}
-			
+
 		}
 		else
 		{
 			$this->log(sprintf($GLOBALS['TL_LANG']['MSC']['noPagesFound'], $dc->id), 'SiteExport', TL_FILES);
-			return printf($GLOBALS['TL_LANG']['MSC']['noPagesFound'], $dc->id);
+			return '<div style="padding-top:10px"><p style="padding:10px;color:red;">'.sprintf($GLOBALS['TL_LANG']['MSC']['noPagesFound'], $dc->id).'</p></div>';
 		}
 
 		$html .= '</li></ul></div>';

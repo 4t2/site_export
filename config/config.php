@@ -15,6 +15,14 @@ $GLOBALS['BE_MOD']['batch']['site_export'] = array
 
 /* Hooks */
 #$GLOBALS['TL_HOOKS']['outputFrontendTemplate'][] = array('SiteExportHooks', 'outputFrontendTemplateHook');
-$GLOBALS['TL_HOOKS']['generatePage'][] = array('SiteExportHooks', 'generatePage');
+
+if (version_compare(VERSION, '3', '>='))
+{
+	$GLOBALS['TL_HOOKS']['getPageLayout'][] = array('SiteExportHooks', 'getPageLayoutHook');
+}
+else
+{
+	$GLOBALS['TL_HOOKS']['generatePage'][] = array('SiteExportHooks', 'generatePageHook');
+}
 
 $GLOBALS['SITEEXPORT']['ZIP']['BIN'] = '/usr/bin/zip';

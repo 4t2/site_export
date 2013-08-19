@@ -19,7 +19,7 @@ $GLOBALS['TL_LANG']['MSC']['epubDownload']              = 'EPUB Download';
 $GLOBALS['TL_LANG']['MSC']['epubDownloadTitle']         = 'exportierte Seiten als EPUB herunterladen';
 $GLOBALS['TL_LANG']['MSC']['numberOfRules']             = '%s Regeln werden beim Export angewendet';
 
-$GLOBALS['TL_LANG']['MSC']['noPagesFound']              = 'Export ID %s: No pages found!';
+$GLOBALS['TL_LANG']['MSC']['noPagesFound']              = 'Keine Seiten für Export ID %s gefunden!';
 $GLOBALS['TL_LANG']['MSC']['se_error']                  = '– FEHLER –';
 $GLOBALS['TL_LANG']['MSC']['deleteExistingFiles']       = '<span style="color:red"><strong>Hinweis:</strong> Beim Export werden vorhandene Dateien im Verzeichnis %s gelöscht.</span>';
 $GLOBALS['TL_LANG']['MSC']['startExport']               = 'Export starten';
