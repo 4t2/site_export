@@ -492,22 +492,36 @@ class SiteExport extends Backend
 
 		if ($objSiteExport->ebookCover != '')
 		{
-			$file = new File($objSiteExport->ebookCover);
+			if (version_compare(VERSION, '3', '>='))
+			{
+				$objEbookCover = \FilesModel::findByPk($objSiteExport->ebookCover);
+				$strEbookCover = $objEbookCover->path;
+			}
+			else
+			{
+				$strEbookCover = $objSiteExport->ebookCover;
+			}
 
-			$epubCoverFile = basename($objSiteExport->ebookCover);
+			$epubCoverFile = basename($strEbookCover);
 
-			$file->copyTo($this->strTargetFolder.'/images/'.$epubCoverFile);
+			$this->import('Files');
 
-			$content .= '		<meta name="cover" content="'.$epubCoverFile.'"/>';
+			$this->Files->copy($strEbookCover, $this->strTargetFolder.'/images/'.$epubCoverFile);
+
+			$content .= '		<meta name="cover" content="cover"/>
+	</metadata>
+	<manifest>
+			<item href="images/'.$epubCoverFile.'" id="cover" media-type="image/jpeg"/>';
 		}
 		else
 		{
 			$epubCoverFile = false;
+			$content .= '
+	</metadata>
+	<manifest>';
 		}
 
 		$content .= '
-	</metadata>
-	<manifest>
 		<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
 ';
 		foreach ($this->getFiles($this->strTargetFolder.'/images', array('.jpg', '.jpeg')) as $file)
