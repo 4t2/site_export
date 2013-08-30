@@ -122,7 +122,7 @@ class SiteExport extends Backend
 						$strUrl = $this->generateFrontendUrl($objPage->row());
 					}
 
-					if (version_compare(VERSION, '3.1', '<') && $objPage->domain != '')
+					if (version_compare(VERSION, '3.1', '<') || strstr($strUrl, '://') === false)
 					{
 						$strUrl = ($this->Environment->ssl ? 'https://' : 'http://') . $objPage->domain . TL_PATH . '/' . $strUrl;
 					}
