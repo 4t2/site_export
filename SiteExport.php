@@ -124,7 +124,7 @@ class SiteExport extends Backend
 
 					if (version_compare(VERSION, '3.1', '<') || strstr($strUrl, '://') === false)
 					{
-						$strUrl = ($this->Environment->ssl ? 'https://' : 'http://') . $objPage->domain . TL_PATH . '/' . $strUrl;
+						$strUrl = ($this->Environment->ssl ? 'https://' : 'http://') . ($objPage->domain ?: $strDomain) . TL_PATH . '/' . $strUrl;
 					}
 
 					$this->arrFilename[$strUrl] = $strFilename;

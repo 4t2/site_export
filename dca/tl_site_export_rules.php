@@ -210,7 +210,7 @@ $GLOBALS['TL_DCA']['tl_site_export_rules'] = array
 /**
  * Class tl_lingo_wordlist
  */
-class tl_site_export_rules extends Backend
+class tl_site_export_rules extends \Backend
 {
 
 	/**
