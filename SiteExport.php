@@ -3,7 +3,7 @@
 /**
  * Class SiteExport
  *
- * @copyright  Lingo4you 2013
+ * @copyright  Lingo4you 2014
  * @author     Mario Müller <http://www.lingolia.com/>
  * @package    SiteExport
  * @license    http://opensource.org/licenses/lgpl-3.0.html
@@ -34,17 +34,17 @@ class SiteExport extends Backend
 			->limit(1)
 			->execute($dc->id);
 
+		$html = '<div id="tl_buttons" style="margin-bottom:10px"><a href="contao/main.php?do=site_export" class="header_back" title="'.specialchars($GLOBALS['TL_LANG']['MSC']['backBT']).'" accesskey="b" onclick="Backend.getScrollOffset();">'.$GLOBALS['TL_LANG']['MSC']['backBT'].'</a></div>';
+		$html .= '<div class="tl_panel">';
+
 		if (($this->strTargetFolder = $this->getTargetFolder($objSiteExport)) === false)
 		{
-			return '<div><strong>'.sprintf($GLOBALS['TL_LANG']['MSC']['exportDirectoryError'], $this->targetDir).'</strong></div>';
+			return $html.'<div id="tl_buttons" style="margin-bottom:10px"><strong style="color:#a00">'.sprintf($GLOBALS['TL_LANG']['MSC']['exportDirectoryError'], $this->targetDir).'</strong></div></div>';
 		}
 
 		$this->exportEpub = $objSiteExport->exportEpub;
 
 		$this->arrPageList = deserialize($objSiteExport->pages, true);
-
-		$html = '<div id="tl_buttons" style="margin-bottom:10px"><a href="contao/main.php?do=site_export" class="header_back" title="'.specialchars($GLOBALS['TL_LANG']['MSC']['backBT']).'" accesskey="b" onclick="Backend.getScrollOffset();">'.$GLOBALS['TL_LANG']['MSC']['backBT'].'</a></div>';
-		$html .= '<div class="tl_panel">';
 
 		if ($this->Input->get('step') == 'preview')
 		{
@@ -127,20 +127,24 @@ class SiteExport extends Backend
 						$strUrl = ($this->Environment->ssl ? 'https://' : 'http://') . ($objPage->domain ?: $strDomain) . TL_PATH . '/' . $strUrl;
 					}
 
-					$this->arrFilename[$strUrl] = $strFilename;
+					$strAlias = preg_replace('#https?://[^/]+/(.*)$#i', '$1', $strUrl);
+
+					$this->arrFilename[$strAlias] = $strFilename;
+					#$this->arrFilename[$strUrl] = $strFilename;
 
 					$pageLayout = ($objSiteExport->includeLayout ? $objSiteExport->layout : FALSE);
 
 					$this->arrPages[] = array(
 						'title' => $objPage->title,
 						'pageTitle' => $objPage->pageTitle,
+						'language' => $objPage->language,
 						'id' => $objPage->id,
 						'pid' => $objPage->pid,
 						'layout' => $pageLayout,
 						'obj' => $objPage,
 						'url' => $strUrl,
 						'layout' => $pageLayout,
-						'exportUrl' => $strUrl.'?export=1'.($pageLayout ? '&layout='.$pageLayout : ''),
+						'exportUrl' => $strUrl.'?export=1'.($pageLayout ? '&layout='.$pageLayout : '').'&rand='.time(),
 						'filename' => $strFilename,
 						'level' => $this->getPageLevel($objPage->pid),
 						'sort' => (array_search($pageId, $this->arrPageList) !== FALSE ? array_search($pageId, $this->arrPageList) + 9000000 : $objPage->sorting)
@@ -395,19 +399,29 @@ class SiteExport extends Backend
 
 	protected function writePage($page)
 	{
+		#$strUrl = $page['exportUrl'].'&itags='.rawurlencode(serialize(array('{{env::page_language}}')));
+
+		set_time_limit(60);
+
 		if (function_exists(curl_init))
 		{
 			$ch = curl_init();
 
 			curl_setopt($ch, CURLOPT_URL, $page['exportUrl']);
 			curl_setopt($ch, CURLOPT_REFERER, $page['exportUrl']);
-			curl_setopt($ch, CURLOPT_USERAGENT, "SiteExport");
+			curl_setopt($ch, CURLOPT_USERAGENT, 'SiteExport');
 			curl_setopt($ch, CURLOPT_HEADER, false);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 			curl_setopt($ch, CURLOPT_TIMEOUT, 10);
 
 			$output = curl_exec($ch);
-
+/*
+			if (strstr($output, 'FORM_SUBMIT') !== FALSE)
+			{
+				curl_setopt($ch, CURLOPT_URL, $page['exportUrl'].'&validate=1');
+				$output = curl_exec($ch);
+			}
+*/
 			curl_close($ch);
 		}
 		else
@@ -417,7 +431,7 @@ class SiteExport extends Backend
 
 		if (!empty($output))
 		{
-			$output = $this->applyRules($output);
+			$output = $this->applyRules($output, $page);
 
 			$file = new File($this->strTargetFolder . '/' . $page['filename']);
 
@@ -544,7 +558,7 @@ class SiteExport extends Backend
 			$content .= "\t\t".'<item id="id_book_toc" href="toc.xhtml" media-type="application/xhtml+xml"/>'."\n";
 			$spine .= "\t\t".'<itemref idref="id_book_toc"/>'."\n";
 		}
-		
+
 		for ($i=0; $i<count($this->arrPages); $i++)
 		{
 			$content .= "\t\t".'<item id="'.$this->arrPages[$i]['navId'].'" href="'.$this->arrPages[$i]['filename'].'" media-type="application/xhtml+xml"/>'."\n";
@@ -609,15 +623,6 @@ class SiteExport extends Backend
 		$files->rrdir($this->strTargetFolder, true);
 
 		$objArchive->close();
-
-		/**
-		 * zip epub file
-		 */
-##		chdir($this->strTargetFolder);
-
-##		exec('cd '.$this->strTargetFolder);
-##		exec($GLOBALS['SITEEXPORT']['ZIP']['BIN'].' -X0 "'.$this->strTargetFolder.'/'.$objSiteExport->ebookFilename.'" mimetype ');
-##		exec($GLOBALS['SITEEXPORT']['ZIP']['BIN'].' -rDX9 "'.$this->strTargetFolder.'/'.$objSiteExport->ebookFilename.'" * -x mimetype -x *.epub');
 	}
 
 
@@ -743,72 +748,82 @@ class SiteExport extends Backend
 
 
 	/**
+	 * execute rule
+	 */
+	protected function executeRule($strContent, $rule, $page)
+	{
+		$rule['replacement'] = str_replace('{{language}}', $page['language'], $rule['replacement']);
+
+		if ($rule['isRegex'] == '1')
+		{
+			$pattern = '~' . str_replace('~', '\~', $rule['pattern']) . '~';
+			$pattern .= ($rule['modIgnoreCase'] == '1' ? 'i' : '');
+			$pattern .= ($rule['modMultiLine']  == '1' ? 'm' : '');
+			$pattern .= ($rule['modDotAll']     == '1' ? 's' : '');
+			$pattern .= ($rule['modUngreedy']   == '1' ? 'U' : '');
+			$pattern .= ($rule['modUTF8']       == '1' ? 'u' : '');
+
+			$strTemp = preg_replace($pattern, $rule['replacement'], $strContent);
+			
+			if (preg_last_error() == PREG_NO_ERROR)
+			{
+			    $last_error = false;
+			}
+			else if (preg_last_error() == PREG_INTERNAL_ERROR)
+			{
+			    $last_error = 'PREG_INTERNAL_ERROR';
+			}
+			else if (preg_last_error() == PREG_BACKTRACK_LIMIT_ERROR)
+			{
+			    $last_error = 'PREG_BACKTRACK_LIMIT_ERROR';
+			}
+			else if (preg_last_error() == PREG_RECURSION_LIMIT_ERROR)
+			{
+			    $last_error = 'PREG_RECURSION_LIMIT_ERROR';
+			}
+			else if (preg_last_error() == PREG_BAD_UTF8_ERROR)
+			{
+			    $last_error = 'PREG_BAD_UTF8_ERROR';
+			}
+			else if (preg_last_error() == PREG_BAD_UTF8_ERROR)
+			{
+			    $last_error = 'PREG_BAD_UTF8_ERROR';
+			}
+			
+			if ($last_error !== false)
+			{
+				$this->log('Error: ' . $rule['title'] . ' → ' . $last_error, 'SiteExport', TL_ERROR);
+			}
+			else
+			{
+				$strContent = $strTemp;
+			}
+		}
+		else
+		{
+			$strContent = str_replace($rule['pattern'], $rule['replacement'], $strContent);
+		}
+
+		return $strContent;
+	}
+
+
+	/**
 	 * apply all export rules
 	 */
-	protected function applyRules($strContent)
+	protected function applyRules($strContent, $page)
 	{
 		$strContent = preg_replace_callback('~(<a.*href=")(.*)(".*>)~isU', 'self::replaceLinks', $strContent);
 
 		foreach ($this->exportRules as $rule)
 		{
-			if ($rule['isRegex'] == '1')
+			if ($rule['isActive'] == '1' && $rule['lateCall'] == '')
 			{
-				$pattern = '~' . str_replace('~', '\~', $rule['pattern']) . '~';
-				$pattern .= ($rule['modIgnoreCase'] == '1' ? 'i' : '');
-				$pattern .= ($rule['modMultiLine']  == '1' ? 'm' : '');
-				$pattern .= ($rule['modDotAll']     == '1' ? 's' : '');
-				$pattern .= ($rule['modUngreedy']   == '1' ? 'U' : '');
-				$pattern .= ($rule['modUTF8']       == '1' ? 'u' : '');
-
-				$strTemp = preg_replace($pattern, $rule['replacement'], $strContent);
-				
-				if (preg_last_error() == PREG_NO_ERROR)
-				{
-				    $last_error = false;
-				}
-				else if (preg_last_error() == PREG_INTERNAL_ERROR)
-				{
-				    $last_error = 'PREG_INTERNAL_ERROR';
-				}
-				else if (preg_last_error() == PREG_BACKTRACK_LIMIT_ERROR)
-				{
-				    $last_error = 'PREG_BACKTRACK_LIMIT_ERROR';
-				}
-				else if (preg_last_error() == PREG_RECURSION_LIMIT_ERROR)
-				{
-				    $last_error = 'PREG_RECURSION_LIMIT_ERROR';
-				}
-				else if (preg_last_error() == PREG_BAD_UTF8_ERROR)
-				{
-				    $last_error = 'PREG_BAD_UTF8_ERROR';
-				}
-				else if (preg_last_error() == PREG_BAD_UTF8_ERROR)
-				{
-				    $last_error = 'PREG_BAD_UTF8_ERROR';
-				}
-				
-				if ($last_error !== false)
-				{
-					$this->log('Error: ' . $rule['title'] . ' → ' . $last_error, 'SiteExport', TL_ERROR);
-				}
-				else
-				{
-					$strContent = $strTemp;
-				}
-
-#				$this->log($pattern . ' → ' . $rule['replacement'], 'SiteExport', TL_ERROR);
-			}
-			else
-			{
-				$strContent = str_replace($rule['pattern'], $rule['replacement'], $strContent);
+				$strContent = $this->executeRule($strContent, $rule, $page);
 			}
 		}
-		
-		$strContent = str_ireplace(
-			array('&nbsp;'),
-			array(' '),
-			$strContent
-		);
+
+		$strContent = str_ireplace(array('&nbsp;'), array(' '), $strContent);
 
 		if (!is_writeable(TL_ROOT.'/'.$this->strTargetFolder) && is_dir(TL_ROOT.'/'.$this->strTargetFolder))
 		{
@@ -853,9 +868,13 @@ class SiteExport extends Backend
 		/* copy stylesheets */
 		$strContent = preg_replace_callback('~(<link.*href=")(.*)(".*>)~isU', 'self::processStylesheets', $strContent);
 
-		if ($this->exportEpub)
+
+		foreach ($this->exportRules as $rule)
 		{
-#			$str = str_ireplace('</head>', )
+			if ($rule['isActive'] == '1' && $rule['lateCall'] == '1')
+			{
+				$strContent = $this->executeRule($strContent, $rule, $page);
+			}
 		}
 
 		return $strContent;
@@ -880,7 +899,7 @@ class SiteExport extends Backend
 				}
 			}
 			
-			return $match[1].'./'.$link.$match[3];
+			return $match[1].$link.$match[3];
 		}
 
 
@@ -905,7 +924,7 @@ class SiteExport extends Backend
 				$this->Files->copy($strRetinaFilename, $this->strTargetFolder.'/images/'.str_replace(array('/', ' '), '_', $strRetinaFilename));
 			}
 
-			return $match[1].'./'.$filename.$match[4];
+			return $match[1].$filename.$match[4];
 		}
 
 
@@ -922,7 +941,7 @@ class SiteExport extends Backend
 				$this->Files->copy($src_audio, $dest_audio);
 			}
 
-			return $match[1].'./'.$filename.$match[4];
+			return $match[1].$filename.$match[4];
 		}
 
 
@@ -943,7 +962,7 @@ class SiteExport extends Backend
 					copy($src_stylesheet, $dest_stylesheet);
 				}
 	
-				return $match[1].'./'.$filename.$match[3];
+				return $match[1].$filename.$match[3];
 			}
 			else
 			{
@@ -985,6 +1004,12 @@ class SiteExport extends Backend
 	protected function deleteFiles($path, $test=false)
 	{
 		$fileCount = 0;
+
+		$folder = new \Folder($path);
+
+		$folder->purge();
+
+		return 0;
 
 		if (!is_writeable(TL_ROOT.'/'.$path) && is_dir(TL_ROOT.'/'.$path))
 		{
@@ -1078,15 +1103,19 @@ class SiteExport extends Backend
 	 */
 	protected function getTargetFolder($objSiteExport)
 	{
-		if (version_compare(VERSION, '3', '>='))
+		if (version_compare(VERSION, '3.2', '<'))
 		{
-			$objFolder = \FilesModel::findByPk($objSiteExport->targetDir);
-			$strFolder = $objFolder->path;
+			return false;
 		}
-		else
+
+		$objFolder = \FilesModel::findByUUID($objSiteExport->targetDir);
+
+		if ($objFolder === null)
 		{
-			$strFolder = $objSiteExport->targetDir;
+			return false;
 		}
+
+		$strFolder = $objFolder->path;
 
 		if (!is_writeable(TL_ROOT.'/'.$strFolder) || !is_dir(TL_ROOT.'/'.$strFolder))
 		{
@@ -1098,12 +1127,3 @@ class SiteExport extends Backend
 	}
 }
 
-/*
-class MyPageRegular extends PageRegular
-{
-	public function __construct()
-	{
-		parent::__construct();
-	}
-}
-*/

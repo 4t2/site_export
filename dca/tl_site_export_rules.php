@@ -100,7 +100,7 @@ $GLOBALS['TL_DCA']['tl_site_export_rules'] = array
 	'palettes' => array
 	(
 		'__selector__'                => array('isRegex'),
-		'default'                     => '{title_legend},title,isActive;{rules_legend},pattern,replacement;{regex_legend},isRegex'
+		'default'                     => '{title_legend},title,isActive,lateCall;{rules_legend},pattern,replacement;{regex_legend},isRegex'
 	),
 	
 	// Subpalettes
@@ -118,11 +118,18 @@ $GLOBALS['TL_DCA']['tl_site_export_rules'] = array
 			'search'                  => true,
 			'exclude'                 => true,
 			'inputType'               => 'text',
-			'eval'                    => array('tl_class'=>'w50', 'mandatory'=>true, 'decodeEntities'=>true, 'maxlength'=>255)
+			'eval'                    => array('tl_class'=>'long', 'mandatory'=>true, 'decodeEntities'=>true, 'maxlength'=>255)
 		),
 		'isActive' => array
 		(
 			'label'			=> &$GLOBALS['TL_LANG']['tl_site_export_rules']['isActive'],
+			'exclude'		=> true,
+			'inputType'		=> 'checkbox',
+			'eval'          => array('tl_class'=>'w50 m12')
+		),
+		'lateCall' => array
+		(
+			'label'			=> &$GLOBALS['TL_LANG']['tl_site_export_rules']['lateCall'],
 			'exclude'		=> true,
 			'inputType'		=> 'checkbox',
 			'eval'          => array('tl_class'=>'w50 m12')
@@ -409,15 +416,32 @@ class tl_site_export_rules extends \Backend
 	 */
 	public function listExportRules($arrRow)
 	{
-		$return = $arrRow['title'] . ($arrRow['isRegex'] ? ' (RegEx)' : '');
+		$arrAttributes = array();
+
+		if ($arrRow['isRegex'])
+		{
+			$arrAttributes[] = 'RegEx';
+		}
+
+		if ($arrRow['lateCall'])
+		{
+			$arrAttributes[] = 'late';
+		}
+
+		$strBuffer = $arrRow['title'];
+
+		if (count($arrAttributes))
+		{
+			$strBuffer .= ' ('. implode(', ', $arrAttributes) . ')';
+		}
 
 		if ($arrRow['isActive'] == '1')
 		{
-			return '<span id="rule'.$arrRow['id'].'" style="color:black">'.$return.'</span>';
+			return '<span id="rule'.$arrRow['id'].'" style="color:black">'.$strBuffer.'</span>';
 		}
 		else
 		{
-			return '<span id="rule'.$arrRow['id'].'" style="color:silver">'.$return.'</span>';
+			return '<span id="rule'.$arrRow['id'].'" style="color:silver">'.$strBuffer.'</span>';
 		}
 	}
 

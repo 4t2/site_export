@@ -10,7 +10,7 @@ CREATE TABLE `tl_site_export` (
   `pages` blob NULL,
   `recursive` char(1) NOT NULL default '',
   `includeLayout` char(1) NOT NULL default '',
-  `targetDir` varchar(255) NOT NULL default '',
+  `targetDir` binary(16) NULL,
   `layout` int(10) unsigned NOT NULL default '0',
   `rulesFrom` int(10) unsigned NOT NULL default '0',
   `toc` varchar(32) NOT NULL default '',
@@ -48,6 +48,7 @@ CREATE TABLE `tl_site_export_rules` (
   `modUngreedy` char(1) NOT NULL default '',
   `modUTF8` char(1) NOT NULL default '',
   `isActive` char(1) NOT NULL default '',
+  `lateCall` char(1) NOT NULL default '',
   PRIMARY KEY  (`id`),
   KEY `pid` (`pid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;

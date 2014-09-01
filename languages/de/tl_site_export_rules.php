@@ -24,6 +24,7 @@ $GLOBALS['TL_LANG']['tl_site_export_rules']['modUngreedy'] = array('Modifikator 
 $GLOBALS['TL_LANG']['tl_site_export_rules']['modUTF8'] = array('Modifikator u', 'Suchmuster werden als UTF-8 behandelt.');
 
 $GLOBALS['TL_LANG']['tl_site_export_rules']['isActive'] = array('Regel beim Export anwenden', 'Die Regel beim Export anwenden.');
+$GLOBALS['TL_LANG']['tl_site_export_rules']['lateCall'] = array('später aufrufen', 'Die Regel erst nach dem Verarbeiten von Medien aufrufen.');
 
 /**
  * Buttons
